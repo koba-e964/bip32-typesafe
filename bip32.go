@@ -126,8 +126,12 @@ func (p *PrivateKey) PrivateKey() [32]byte {
 }
 
 func (p *PrivateKey) GetPublicKey() *PublicKey {
+	version := publicKeyVersion
+	if p.version == [4]byte(testnetPrivateKeyVersion) {
+		version = testnetPublicKeyVersion
+	}
 	publicKey := PublicKey{
-		version:           [4]byte(publicKeyVersion),
+		version:           [4]byte(version),
 		depth:             p.depth,
 		parentFingerprint: p.parentFingerprint,
 		childNumber:       p.childNumber,
@@ -175,10 +179,10 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	child := PrivateKey{
 		version:           p.version,
 		depth:             p.depth + 1,
-		parentFingerprint: [4]byte(hash160(pubPart)),
+		parentFingerprint: [4]byte(hash160(pubPart)[:4]),
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
-		privateKey:        ll,
+		privateKey:        scAdd(ll, p.privateKey),
 	}
 	return &child, nil
 }
@@ -189,7 +193,7 @@ func NewMasterKey(seed []byte) *PrivateKey {
 	l := hmac.Sum(nil)
 	ll := [32]byte(l[:32])
 	lr := [32]byte(l[32:])
-	child := PrivateKey{
+	master := PrivateKey{
 		version:           [4]byte(privateKeyVersion),
 		depth:             0,
 		parentFingerprint: [4]byte{},
@@ -197,5 +201,18 @@ func NewMasterKey(seed []byte) *PrivateKey {
 		chainCode:         lr,
 		privateKey:        ll,
 	}
-	return &child
+	return &master
+}
+
+// MasterPublicKeyFromRaw returns a master public key for mainnet with the given `publicKey` and `chainCode`.
+func MasterPublicKeyFromRaw(publicKey [33]byte, chainCode [32]byte) *PublicKey {
+	master := PublicKey{
+		version:           [4]byte(publicKeyVersion),
+		depth:             0,
+		parentFingerprint: [4]byte{},
+		childNumber:       [4]byte{},
+		chainCode:         chainCode,
+		publicKey:         publicKey,
+	}
+	return &master
 }

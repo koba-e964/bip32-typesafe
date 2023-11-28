@@ -16,4 +16,8 @@ func TestVector(t *testing.T) {
 	serPub := vartimeBase58Encode(master.GetPublicKey().Serialize())
 	assert.Equal(t, extPub, serPub)
 	assert.Equal(t, extPrv, serPrv)
+	childH0, _ := master.NewChildKey(FirstHardenedChildIndex + 0)
+	extPrv0 := "xprv9uHRZZhk6KAJC1avXpDAp4MDc3sQKNxDiPvvkX8Br5ngLNv1TxvUxt4cV1rGL5hj6KCesnDYUhd7oWgT11eZG7XnxHrnYeSvkzY7d2bhkJ7"
+	serPrv0 := vartimeBase58Encode(childH0.Serialize())
+	assert.Equal(t, extPrv0, serPrv0)
 }
