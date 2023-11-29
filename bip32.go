@@ -81,17 +81,21 @@ func (p *PublicKey) NewChildKey(childIdx uint32) (*PublicKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
 	}
-	l := hmacThing(p.chainCode, p.publicKey[:], childIdx)
+	uncompressed, err := uncompress(p.publicKey)
+	if err != nil {
+		return nil, err
+	}
+	l := hmacThing(p.chainCode, p.publicKey, childIdx)
 	ll := [32]byte(l[:32])
 	lr := [32]byte(l[32:])
-	derivedPubKey := vartimePoint(ll[:])
+	derivedPubKey := geAdd(uncompressed, vartimePoint(ll))
 	child := PublicKey{
 		version:           p.version,
 		depth:             p.depth + 1,
 		parentFingerprint: [4]byte(hash160(p.publicKey[:])),
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
-		publicKey:         [33]byte(derivedPubKey),
+		publicKey:         compress(derivedPubKey),
 	}
 	return &child, nil
 }
@@ -136,7 +140,7 @@ func (p *PrivateKey) GetPublicKey() *PublicKey {
 		parentFingerprint: p.parentFingerprint,
 		childNumber:       p.childNumber,
 		chainCode:         p.chainCode,
-		publicKey:         [33]byte(vartimePoint(p.privateKey[:])),
+		publicKey:         compress(vartimePoint(p.privateKey)),
 	}
 	return &publicKey
 }
@@ -168,8 +172,8 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
 	}
-	pubPart := vartimePoint(p.privateKey[:])
-	keyData := append([]byte{0x00}, p.privateKey[:]...)
+	pubPart := compress(vartimePoint(p.privateKey))
+	keyData := [33]byte(append([]byte{0x00}, p.privateKey[:]...))
 	if childIdx < FirstHardenedChildIndex {
 		keyData = pubPart
 	}
@@ -179,7 +183,7 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	child := PrivateKey{
 		version:           p.version,
 		depth:             p.depth + 1,
-		parentFingerprint: [4]byte(hash160(pubPart)[:4]),
+		parentFingerprint: [4]byte(hash160(pubPart[:])[:4]),
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
 		privateKey:        scAdd(ll, p.privateKey),
