@@ -47,12 +47,20 @@ func feAdd(a FE, b FE) FE {
 }
 
 func feModSqrt(a FE) FE {
-	// TODO: make it constant-time
-	aBig := big.NewInt(0).SetBytes(a[:])
-	aBig.ModSqrt(aBig, pBig)
-	var result FE
-	aBig.FillBytes(result[:])
-	return result
+	// ^((p+1)/4)
+	exp := p
+	exp[31] += 1
+	var prod FE
+	prod[31] = 1
+	current := a
+	for i := 2; i < 256; i++ {
+		// It's totally fine to branch with exp[_] because it's public.
+		if (exp[31-i/8] & (1 << (i % 8))) != 0 {
+			prod = feMul(prod, current)
+		}
+		current = feMul(current, current)
+	}
+	return prod
 }
 
 // reduction mod n
