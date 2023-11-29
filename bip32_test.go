@@ -23,7 +23,9 @@ type testVector struct {
 	key  keyPair
 }
 
+// Test Vectors from https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 var tests = []testVector{
+	// Test vector 1
 	{
 		seed: "000102030405060708090a0b0c0d0e0f",
 		key: keyPair{
@@ -76,9 +78,52 @@ var tests = []testVector{
 			},
 		},
 	},
+	// Test vector 3
+	{
+		seed: "4b381541583be4423346c643850da4b320e46a87ae3d2a4e6da11eba819cd4acba45d239319ac14f863b8d5ab5a0d0c64d2e8a1e7d1457df2e5a3c51c73235be",
+		key: keyPair{
+			extPub: "xpub661MyMwAqRbcEZVB4dScxMAdx6d4nFc9nvyvH3v4gJL378CSRZiYmhRoP7mBy6gSPSCYk6SzXPTf3ND1cZAceL7SfJ1Z3GC8vBgp2epUt13",
+			extPrv: "xprv9s21ZrQH143K25QhxbucbDDuQ4naNntJRi4KUfWT7xo4EKsHt2QJDu7KXp1A3u7Bi1j8ph3EGsZ9Xvz9dGuVrtHHs7pXeTzjuxBrCmmhgC6",
+			children: []child{
+				{
+					index: FirstHardenedChildIndex + 0,
+					key: keyPair{
+						extPub: "xpub68NZiKmJWnxxS6aaHmn81bvJeTESw724CRDs6HbuccFQN9Ku14VQrADWgqbhhTHBaohPX4CjNLf9fq9MYo6oDaPPLPxSb7gwQN3ih19Zm4Y",
+						extPrv: "xprv9uPDJpEQgRQfDcW7BkF7eTya6RPxXeJCqCJGHuCJ4GiRVLzkTXBAJMu2qaMWPrS7AANYqdq6vcBcBUdJCVVFceUvJFjaPdGZ2y9WACViL4L",
+					},
+				},
+			},
+		},
+	},
+	// Test vector 4
+	{
+		seed: "3ddd5602285899a946114506157c7997e5444528f3003f6134712147db19b678",
+		key: keyPair{
+			extPub: "xpub661MyMwAqRbcGczjuMoRm6dXaLDEhW1u34gKenbeYqAix21mdUKJyuyu5F1rzYGVxyL6tmgBUAEPrEz92mBXjByMRiJdba9wpnN37RLLAXa",
+			extPrv: "xprv9s21ZrQH143K48vGoLGRPxgo2JNkJ3J3fqkirQC2zVdk5Dgd5w14S7fRDyHH4dWNHUgkvsvNDCkvAwcSHNAQwhwgNMgZhLtQC63zxwhQmRv",
+			children: []child{
+				{
+					index: FirstHardenedChildIndex + 0,
+					key: keyPair{
+						extPub: "xpub69AUMk3qDBi3uW1sXgjCmVjJ2G6WQoYSnNHyzkmdCHEhSZ4tBok37xfFEqHd2AddP56Tqp4o56AePAgCjYdvpW2PU2jbUPFKsav5ut6Ch1m",
+						extPrv: "xprv9vB7xEWwNp9kh1wQRfCCQMnZUEG21LpbR9NPCNN1dwhiZkjjeGRnaALmPXCX7SgjFTiCTT6bXes17boXtjq3xLpcDjzEuGLQBM5ohqkao9G",
+						children: []child{
+							{
+								index: FirstHardenedChildIndex + 1,
+								key: keyPair{
+									extPub: "xpub6BJA1jSqiukeaesWfxe6sNK9CCGaujFFSJLomWHprUL9DePQ4JDkM5d88n49sMGJxrhpjazuXYWdMf17C9T5XnxkopaeS7jGk1GyyVziaMt",
+									extPrv: "xprv9xJocDuwtYCMNAo3Zw76WENQeAS6WGXQ55RCy7tDJ8oALr4FWkuVoHJeHVAcAqiZLE7Je3vZJHxspZdFHfnBEjHqU5hG1Jaj32dVoS6XLT1",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	},
 }
 
-func TestVector(t *testing.T) {
+func TestVectors(t *testing.T) {
 	for _, vector := range tests {
 
 		seed, _ := hex.DecodeString(vector.seed)
