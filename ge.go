@@ -4,7 +4,6 @@ package bip32
 import (
 	"crypto/subtle"
 	"errors"
-	"math/big"
 
 	btcutil "github.com/FactomProject/btcutilecc"
 )
@@ -12,9 +11,18 @@ import (
 var ErrorInvalidPoint = errors.New("invalid point on secp256k1")
 
 type Compressed = [33]byte
+
+// Point retains a point in a Jacobian coordinate
 type Point struct {
 	x FE
 	y FE
+	z FE
+}
+
+var one FE
+
+func init() {
+	one[31] = 1
 }
 
 func uncompress(a Compressed) (*Point, error) {
@@ -43,28 +51,47 @@ func uncompress(a Compressed) (*Point, error) {
 	for i := 0; i < len(y); i++ {
 		y[i] = byte(subtle.ConstantTimeSelect(diff, int(negY[i]), int(y[i])))
 	}
-	return &Point{x: x, y: y}, nil
+	return &Point{x: x, y: y, z: one}, nil
 }
 
 func compress(p *Point) Compressed {
 	var result [33]byte
-	result[0] = byte(subtle.ConstantTimeSelect(int(p.y[31]&1), 0x03, 0x02))
-	copy(result[1:], p.x[:])
+	zInv := feInv(p.z)
+	z2 := feSquare(zInv)
+	z3 := feMul(z2, zInv)
+	x := feMul(p.x, z2)
+	y := feMul(p.y, z3)
+	result[0] = byte(subtle.ConstantTimeSelect(int(y[31]&1), 0x03, 0x02))
+	copy(result[1:], x[:])
 	return result
 }
 
 func geAdd(a *Point, b *Point) *Point {
-	// TODO: make it constant-time
-	curve := btcutil.Secp256k1()
-	xa := big.NewInt(0).SetBytes(a.x[:])
-	ya := big.NewInt(0).SetBytes(a.y[:])
-	xb := big.NewInt(0).SetBytes(b.x[:])
-	yb := big.NewInt(0).SetBytes(b.y[:])
-	x, y := curve.Add(xa, ya, xb, yb)
-	var xBytes, yBytes FE
-	x.FillBytes(xBytes[:])
-	y.FillBytes(yBytes[:])
-	return &Point{x: xBytes, y: yBytes}
+	// https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-2007-bl
+	z1z1 := feSquare(a.z)
+	z2z2 := feSquare(b.z)
+	u1 := feMul(a.x, z2z2)
+	u2 := feMul(b.x, z1z1)
+	s1 := feMul(a.y, feMul(b.z, z2z2))
+	s2 := feMul(b.y, feMul(a.z, z1z1))
+	h := feSub(u2, u1)
+	i := feAdd(h, h)
+	i = feSquare(i)
+	j := feMul(h, i)
+	r := feSub(s2, s1)
+	r = feAdd(r, r)
+	v := feMul(u1, i)
+	x3 := feSquare(r)
+	x3 = feSub(x3, j)
+	x3 = feSub(x3, feAdd(v, v))
+	y3 := feMul(r, feSub(v, x3))
+	tmp := feMul(s1, j)
+	y3 = feSub(y3, feAdd(tmp, tmp))
+	z3 := feSquare(feAdd(a.z, b.z))
+	z3 = feSub(z3, z1z1)
+	z3 = feSub(z3, z2z2)
+	z3 = feMul(z3, h)
+	return &Point{x: x3, y: y3, z: z3}
 }
 
 func vartimePoint(n Scalar) *Point {
@@ -75,5 +102,5 @@ func vartimePoint(n Scalar) *Point {
 	var xBytes, yBytes [32]byte
 	x.FillBytes(xBytes[:])
 	y.FillBytes(yBytes[:])
-	return &Point{x: xBytes, y: yBytes}
+	return &Point{x: xBytes, y: yBytes, z: one}
 }

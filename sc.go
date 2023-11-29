@@ -43,6 +43,25 @@ func conditionallySubtract(cond int, a *[32]byte, n [32]byte) {
 	}
 }
 
+// if cond == 1, a -= n. otherwise, a is unchanged.
+// if cond is another value, the result is undefined.
+func conditionallyAdd(cond int, a *[32]byte, n [32]byte) {
+	sub := *a
+	inPlaceAdd(&sub, n)
+	for i := 0; i < len(a); i++ {
+		a[i] = byte(subtle.ConstantTimeSelect(cond, int(sub[i]), int(a[i])))
+	}
+}
+
+func inPlaceAdd(a *[32]byte, b [32]byte) {
+	var carry byte
+	for i := len(a) - 1; i >= 0; i-- {
+		thisCarry, sum := sumTwoBytes(a[i], b[i], carry)
+		a[i] = sum
+		carry = thisCarry
+	}
+}
+
 func inPlaceSubtract(a *[32]byte, b [32]byte) {
 	var borrow byte = 1
 	for i := len(a) - 1; i >= 0; i-- {

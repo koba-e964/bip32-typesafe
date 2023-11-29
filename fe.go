@@ -23,6 +23,11 @@ func feMul(a FE, b FE) FE {
 	return result
 }
 
+func feSquare(a FE) FE {
+	// TODO: faster than feMul
+	return feMul(a, a)
+}
+
 func feInv(a FE) FE {
 	// TODO: make it constant-time
 	aBig := big.NewInt(0).SetBytes(a[:])
@@ -33,6 +38,7 @@ func feInv(a FE) FE {
 }
 
 // (a + b) mod p
+//
 // constant-time
 func feAdd(a FE, b FE) FE {
 	var carry byte
@@ -43,6 +49,20 @@ func feAdd(a FE, b FE) FE {
 	}
 	conditionallySubtract(int(carry), &a, p)
 	feReduce(&a)
+	return a
+}
+
+// (a - b) mod p
+//
+// constant-time
+func feSub(a FE, b FE) FE {
+	var borrow byte = 1
+	for i := len(a) - 1; i >= 0; i-- {
+		thisBorrow, diff := subTwoBytes(a[i], b[i], borrow)
+		a[i] = diff
+		borrow = thisBorrow
+	}
+	conditionallyAdd(int(borrow^1), &a, p)
 	return a
 }
 
