@@ -1,6 +1,7 @@
 package base58
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,6 +18,20 @@ func TestEncode0(t *testing.T) {
 		assert.Equal(t, expected, actual)
 		assert.Equal(t, copyData, data)
 	}
+}
+
+func TestEncode1(t *testing.T) {
+	data := []byte{1}
+	// Asserts if resultLen is very long, it does not panic.
+	Encode(data, 100)
+}
+
+func TestEncode2(t *testing.T) {
+	// A case in https://lists.linuxfoundation.org/pipermail/bitcoin-dev/2012-January/001039.html
+	hex, _ := hex.DecodeString("801111111111111111111111111111111111111111111111111111111111111111e5ce7258")
+	encoded := "5HwoXVkHoRM8sL2KmNRS217n1g8mPPBomrY7yehCuXC1115WWsh"
+	actual := Encode(hex, 51)
+	assert.Equal(t, encoded, actual)
 }
 
 func BenchmarkEncode_ConstantTime_Long(b *testing.B) {

@@ -29,8 +29,10 @@ func VartimeEncode(a []byte, resultLength int) string {
 func Encode(a []byte, resultLength int) string {
 	tmp := append([]byte{}, a...)
 	result := make([]byte, resultLength)
+	// log(58)/log(2) > 5.857 > 23/4, so every 4 letters we can delete 23 bits
+	deletedQuarterBits := 0
 	for i := 0; i < resultLength; i++ {
-		remainder := div58(tmp)
+		remainder := div58(tmp[min(len(tmp), deletedQuarterBits/32):])
 		char := '1' + remainder                                                                              // [0,9): '1'..'9'
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(9, remainder), 'A'+remainder-9, char)   // [9,17): 'A'..'H'
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(17, remainder), 'J'+remainder-17, char) // [17,22): 'J'..'N'
@@ -38,6 +40,7 @@ func Encode(a []byte, resultLength int) string {
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(33, remainder), 'a'+remainder-33, char) // [33,44): 'a'..'k'
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(44, remainder), 'm'+remainder-44, char) // [44,58): 'm'..'z'
 		result[resultLength-1-i] = byte(char)
+		deletedQuarterBits += 23
 	}
 	return string(result)
 }
