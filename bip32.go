@@ -88,7 +88,7 @@ func (p *PublicKey) NewChildKey(childIdx uint32) (*PublicKey, error) {
 	l := hmacThing(p.chainCode, p.publicKey, childIdx)
 	ll := [32]byte(l[:32])
 	lr := [32]byte(l[32:])
-	derivedPubKey := geAdd(uncompressed, vartimePoint(ll))
+	derivedPubKey := geAdd(uncompressed, gePoint(ll))
 	child := PublicKey{
 		version:           p.version,
 		depth:             p.depth + 1,
@@ -140,7 +140,7 @@ func (p *PrivateKey) GetPublicKey() *PublicKey {
 		parentFingerprint: p.parentFingerprint,
 		childNumber:       p.childNumber,
 		chainCode:         p.chainCode,
-		publicKey:         compress(vartimePoint(p.privateKey)),
+		publicKey:         compress(gePoint(p.privateKey)),
 	}
 	return &publicKey
 }
@@ -172,7 +172,7 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
 	}
-	pubPart := compress(vartimePoint(p.privateKey))
+	pubPart := compress(gePoint(p.privateKey))
 	keyData := [33]byte(append([]byte{0x00}, p.privateKey[:]...))
 	if childIdx < FirstHardenedChildIndex {
 		keyData = pubPart

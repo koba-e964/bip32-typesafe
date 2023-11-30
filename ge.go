@@ -3,6 +3,7 @@ package bip32
 
 import (
 	"crypto/subtle"
+	"encoding/hex"
 	"errors"
 
 	btcutil "github.com/FactomProject/btcutilecc"
@@ -12,6 +13,13 @@ var ErrorInvalidPoint = errors.New("invalid point on secp256k1")
 
 type Compressed = [33]byte
 
+var (
+	gxBytes, _    = hex.DecodeString("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
+	gyBytes, _    = hex.DecodeString("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8")
+	gx         FE = [32]byte(gxBytes)
+	gy         FE = [32]byte(gyBytes)
+)
+
 // Point retains a point in a Jacobian coordinate
 type Point struct {
 	x FE
@@ -19,7 +27,7 @@ type Point struct {
 	z FE
 }
 
-var one FE
+var zero, one FE
 
 func init() {
 	one[31] = 1
@@ -67,6 +75,38 @@ func compress(p *Point) Compressed {
 }
 
 func geAdd(a *Point, b *Point) *Point {
+	sum1 := geDouble(a)
+	sum2 := geAddDistinct(a, b)
+	cond := subtle.ConstantTimeCompare(sum2.x[:], zero[:])
+	cond &= subtle.ConstantTimeCompare(sum2.y[:], zero[:])
+	cond &= subtle.ConstantTimeCompare(sum2.z[:], zero[:])
+	return choicePoint(cond, sum1, sum2)
+}
+
+func geDouble(p *Point) *Point {
+	// https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+	a := feSquare(p.x)
+	b := feSquare(p.y)
+	c := feSquare(b)
+	d := feSub(feSquare(feAdd(p.x, b)), feAdd(a, c))
+	d = feAdd(d, d)
+	e := feAdd(a, feAdd(a, a))
+	f := feSquare(e)
+	x3 := feSub(f, feAdd(d, d))
+	y3 := feMul(e, feSub(d, x3))
+	tmp := feAdd(c, c)
+	tmp = feAdd(tmp, tmp)
+	tmp = feAdd(tmp, tmp)
+	y3 = feSub(y3, tmp)
+	z3 := feMul(p.y, p.z)
+	z3 = feAdd(z3, z3)
+	return &Point{x: x3, y: y3, z: z3}
+}
+
+// If a = b != O, this function returns (0, 0, 0), which is invalid.
+func geAddDistinct(a *Point, b *Point) *Point {
+	aIsZero := subtle.ConstantTimeCompare(a.z[:], zero[:])
+	bIsZero := subtle.ConstantTimeCompare(b.z[:], zero[:])
 	// https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-2007-bl
 	z1z1 := feSquare(a.z)
 	z2z2 := feSquare(b.z)
@@ -91,16 +131,37 @@ func geAdd(a *Point, b *Point) *Point {
 	z3 = feSub(z3, z1z1)
 	z3 = feSub(z3, z2z2)
 	z3 = feMul(z3, h)
-	return &Point{x: x3, y: y3, z: z3}
+	p := &Point{x: x3, y: y3, z: z3}
+	return choicePoint(aIsZero, b, choicePoint(bIsZero, a, p))
 }
 
 func vartimePoint(n Scalar) *Point {
-	// TODO: Use a secure impl of secp256k1 or write one on my own
-	// AVT VIAM INVENIAM AVT FACIAM
 	curve := btcutil.Secp256k1()
 	x, y := curve.ScalarBaseMult(n[:])
 	var xBytes, yBytes [32]byte
 	x.FillBytes(xBytes[:])
 	y.FillBytes(yBytes[:])
 	return &Point{x: xBytes, y: yBytes, z: one}
+}
+
+func gePoint(n Scalar) *Point {
+	current := &Point{x: gx, y: gy, z: one}
+	prod := &Point{x: one, y: one}
+	for i := 0; i < 256; i++ {
+		prodCurrent := geAdd(prod, current)
+		cond := int(n[31-i/8]>>(i%8)) & 1
+		prod = choicePoint(cond, prodCurrent, prod)
+		current = geAdd(current, current)
+	}
+	return prod
+}
+
+func choicePoint(cond int, one *Point, zero *Point) *Point {
+	var p Point
+	for j := 0; j < len(one.x); j++ {
+		p.x[j] = byte(subtle.ConstantTimeSelect(cond, int(one.x[j]), int(zero.x[j])))
+		p.y[j] = byte(subtle.ConstantTimeSelect(cond, int(one.y[j]), int(zero.y[j])))
+		p.z[j] = byte(subtle.ConstantTimeSelect(cond, int(one.z[j]), int(zero.z[j])))
+	}
+	return &p
 }
