@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/sha512"
+	"crypto/subtle"
 	"encoding/binary"
 	"math/big"
 
@@ -38,7 +39,6 @@ func checksum(a []byte) [4]byte {
 }
 
 func vartimeBase58Encode(a [82]byte) string {
-	// TODO: not constant-time, but have to use big.Int
 	tmp := big.NewInt(0)
 	radix := big.NewInt(58)
 	tmp.SetBytes(a[:])
@@ -51,4 +51,31 @@ func vartimeBase58Encode(a [82]byte) string {
 		result[110-i] = alphabet[index]
 	}
 	return string(result)
+}
+
+func base58Encode(a [82]byte) string {
+	result := make([]byte, 111)
+	for i := 0; i < 111; i++ {
+		remainder := div58(&a)
+		char := '1' + remainder                                                                              // [0,9): '1'..'9'
+		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(9, remainder), 'A'+remainder-9, char)   // [9,17): 'A'..'H'
+		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(17, remainder), 'J'+remainder-17, char) // [17,22): 'J'..'N'
+		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(22, remainder), 'P'+remainder-22, char) // [22,33): 'P'..'Z'
+		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(33, remainder), 'a'+remainder-33, char) // [33,44): 'a'..'k'
+		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(44, remainder), 'm'+remainder-44, char) // [44,58): 'm'..'z'
+		result[110-i] = byte(char)
+	}
+	return string(result)
+}
+
+func div58(a *[82]byte) int {
+	var carry int
+	for i := 0; i < len(a); i++ {
+		tmp := carry<<8 | int(a[i])
+		q := tmp / 58
+		r := tmp % 58
+		a[i] = byte(q)
+		carry = r
+	}
+	return carry
 }
