@@ -27,9 +27,10 @@ func VartimeEncode(a []byte, resultLength int) string {
 //
 // This function runs in constant time.
 func Encode(a []byte, resultLength int) string {
+	tmp := append([]byte{}, a...)
 	result := make([]byte, resultLength)
 	for i := 0; i < resultLength; i++ {
-		remainder := div58(a)
+		remainder := div58(tmp)
 		char := '1' + remainder                                                                              // [0,9): '1'..'9'
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(9, remainder), 'A'+remainder-9, char)   // [9,17): 'A'..'H'
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(17, remainder), 'J'+remainder-17, char) // [17,22): 'J'..'N'

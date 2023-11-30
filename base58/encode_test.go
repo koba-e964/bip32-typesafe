@@ -10,9 +10,12 @@ func TestEncode0(t *testing.T) {
 	for firstByte := 0; firstByte < 256; firstByte++ {
 		var data [82]byte
 		data[0] = byte(firstByte)
+		copyData := data
 		expected := VartimeEncode(data[:], 111)
+		assert.Equal(t, copyData, data)
 		actual := Encode(data[:], 111)
 		assert.Equal(t, expected, actual)
+		assert.Equal(t, copyData, data)
 	}
 }
 
