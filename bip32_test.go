@@ -128,8 +128,8 @@ func TestVectors(t *testing.T) {
 
 		seed, _ := hex.DecodeString(vector.seed)
 		master := NewMasterKey(seed)
-		serPrv := base58Encode(master.Serialize())
-		serPub := base58Encode(master.GetPublicKey().Serialize())
+		serPrv := base58EncodeKeyBytes(master.Serialize())
+		serPub := base58EncodeKeyBytes(master.GetPublicKey().Serialize())
 		assert.Equal(t, vector.key.extPub, serPub)
 		assert.Equal(t, vector.key.extPrv, serPrv)
 		for _, child := range vector.key.children {
@@ -142,8 +142,8 @@ func testChild(t *testing.T, prv *PrivateKey, pub *PublicKey, child child) {
 	childPrv, err := prv.NewChildKey(child.index)
 	assert.Nil(t, err)
 	childPub := childPrv.GetPublicKey()
-	serPrv0 := base58Encode(childPrv.Serialize())
-	serPub0 := base58Encode(childPub.Serialize())
+	serPrv0 := base58EncodeKeyBytes(childPrv.Serialize())
+	serPub0 := base58EncodeKeyBytes(childPub.Serialize())
 	assert.Equal(t, child.key.extPrv, serPrv0)
 	assert.Equal(t, child.key.extPub, serPub0)
 	if child.index < FirstHardenedChildIndex {
