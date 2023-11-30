@@ -27,12 +27,16 @@ func VartimeEncode(a []byte, resultLength int) string {
 //
 // This function runs in constant time.
 func Encode(a []byte, resultLength int) string {
-	tmp := append([]byte{}, a...)
+	aLen := len(a)
+	tmp := make([]uint32, (aLen+3)/4)
+	for i := 0; i < aLen; i++ {
+		tmp[len(tmp)-1-i/4] |= uint32(a[aLen-1-i]) << (8 * (i % 4))
+	}
 	result := make([]byte, resultLength)
 	// log(58)/log(2) > 5.857 > 23/4, so every 4 letters we can delete 23 bits
 	deletedQuarterBits := 0
 	for i := 0; i < resultLength; i++ {
-		remainder := div58(tmp[min(len(tmp), deletedQuarterBits/32):])
+		remainder := div58(tmp[min(len(tmp), deletedQuarterBits/128):])
 		char := '1' + remainder                                                                              // [0,9): '1'..'9'
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(9, remainder), 'A'+remainder-9, char)   // [9,17): 'A'..'H'
 		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(17, remainder), 'J'+remainder-17, char) // [17,22): 'J'..'N'
@@ -45,14 +49,14 @@ func Encode(a []byte, resultLength int) string {
 	return string(result)
 }
 
-func div58(a []byte) int {
-	var carry int
+func div58(a []uint32) int {
+	var carry int64
 	for i := 0; i < len(a); i++ {
-		tmp := carry<<8 | int(a[i])
+		tmp := carry<<32 | int64(a[i])
 		q := tmp / 58
 		r := tmp % 58
-		a[i] = byte(q)
+		a[i] = uint32(q)
 		carry = r
 	}
-	return carry
+	return int(carry)
 }
