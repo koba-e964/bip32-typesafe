@@ -40,7 +40,15 @@ func TestSub2(t *testing.T) {
 	assert.Equal(t, *new(FE), result)
 }
 
-func TestFEMul(t *testing.T) {
+func TestFEMul0(t *testing.T) {
+	var value FE
+	value[31] = 2
+	expected := feVartimeMul(value, value)
+	actual := feMul(value, value)
+	assert.Equal(t, expected, actual)
+}
+
+func TestFEMul1(t *testing.T) {
 	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
 	value := FE(valueBytes)
 	expected := feVartimeMul(value, value)

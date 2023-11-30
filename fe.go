@@ -13,15 +13,40 @@ var pBig = big.NewInt(0).SetBytes(pBytes)
 type FE = [32]byte
 
 func feMul(a FE, b FE) FE {
-	// TODO: optimize, now it's about 300x as slow as feVartimeMul
-	current := a
-	sum := FE{}
-	for i := 0; i < 256; i++ {
-		sumCurrent := feAdd(sum, current)
-		cond := int(b[31-i/8]>>(i%8)) & 1
-		sum = choiceFE(cond, sumCurrent, sum)
-		current = feAdd(current, current)
+	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
+	// a, b are in big-endian, so indices in the original implementation must be reversed.
+	var t [63]uint32
+	for i := 0; i < 32; i++ {
+		for j := 0; j < 32; j++ {
+			t[i+j] += uint32(a[i]) * uint32(b[j])
+		}
 	}
+	for i := 32; i < 63; i++ {
+		v := t[i-32]
+		t[i-4] += v
+		t[i-1] += 3 * v
+		t[i] += 209 * v
+	}
+	// now t[i] < 256 * (2 * 209 + 1)
+	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L63-L81
+	for rep := 0; rep < 2; rep++ {
+		v := t[31] >> 8
+		t[31] &= 0xff
+		t[58] += v
+		t[61] += 3 * v
+		t[62] += 209 * v
+
+		for i := 62; i >= 32; i-- {
+			u := t[i] >> 8
+			t[i-1] += u
+			t[i] &= 0xff
+		}
+	}
+	sum := FE{}
+	for i := 0; i < 32; i++ {
+		sum[i] = byte(t[i+31])
+	}
+	feReduce(&sum)
 	return sum
 }
 
