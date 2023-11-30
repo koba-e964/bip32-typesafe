@@ -13,7 +13,19 @@ var pBig = big.NewInt(0).SetBytes(pBytes)
 type FE = [32]byte
 
 func feMul(a FE, b FE) FE {
-	// TODO: make it constant-time
+	// TODO: optimize, now it's about 300x as slow as feVartimeMul
+	current := a
+	sum := FE{}
+	for i := 0; i < 256; i++ {
+		sumCurrent := feAdd(sum, current)
+		cond := int(b[31-i/8]>>(i%8)) & 1
+		sum = choiceFE(cond, sumCurrent, sum)
+		current = feAdd(current, current)
+	}
+	return sum
+}
+
+func feVartimeMul(a FE, b FE) FE {
 	aBig := big.NewInt(0).SetBytes(a[:])
 	bBig := big.NewInt(0).SetBytes(b[:])
 	aBig.Mul(aBig, bBig)
@@ -95,4 +107,12 @@ func feReduce(a *FE) {
 func feIsValid(a FE) int {
 	cmp := compareBytes(a, p)
 	return subtle.ConstantTimeEq(int32(cmp), -1)
+}
+
+func choiceFE(cond int, one FE, zero FE) FE {
+	var p FE
+	for j := 0; j < len(one); j++ {
+		p[j] = byte(subtle.ConstantTimeSelect(cond, int(one[j]), int(zero[j])))
+	}
+	return p
 }

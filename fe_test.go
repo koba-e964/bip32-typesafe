@@ -1,6 +1,7 @@
 package bip32
 
 import (
+	"encoding/hex"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,4 +38,30 @@ func TestSub2(t *testing.T) {
 	two[31] = 2
 	result := feSub(two, two)
 	assert.Equal(t, *new(FE), result)
+}
+
+func TestFEMul(t *testing.T) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := FE(valueBytes)
+	expected := feVartimeMul(value, value)
+	actual := feMul(value, value)
+	assert.Equal(t, expected, actual)
+}
+
+func BenchmarkMul_ConstantTime(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := FE(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feMul(value, value)
+	}
+}
+
+func BenchmarkMul_VariableTime(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := FE(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feVartimeMul(value, value)
+	}
 }
