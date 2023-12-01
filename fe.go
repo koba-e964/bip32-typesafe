@@ -61,12 +61,31 @@ func feVartimeMul(a FE, b FE) FE {
 }
 
 func feSquare(a FE) FE {
-	// TODO: faster than feMul
 	return feMul(a, a)
 }
 
+// feInv gets the inverse of a. It retuns 0 if `a == 0`.
+//
+// This function is about 400x as slow as `feVartimeInv`.
+// If you don't need constant-time property, you should use `feVartimeInv` instead.
 func feInv(a FE) FE {
-	// TODO: make it constant-time
+	// ^(p-2)
+	exp := p
+	exp[31] -= 2
+	var prod FE
+	prod[31] = 1
+	current := a
+	for i := 0; i < 256; i++ {
+		// It's totally fine to branch with exp[_] because it's public.
+		if (exp[31-i/8] & (1 << (i % 8))) != 0 {
+			prod = feMul(prod, current)
+		}
+		current = feMul(current, current)
+	}
+	return prod
+}
+
+func feVartimeInv(a FE) FE {
 	aBig := big.NewInt(0).SetBytes(a[:])
 	aBig.ModInverse(aBig, pBig)
 	var result FE
@@ -120,7 +139,7 @@ func feModSqrt(a FE) FE {
 	return prod
 }
 
-// reduction mod n
+// reduction mod p
 // constant-time
 func feReduce(a *FE) {
 	cmp := compareBytes(*a, p)
