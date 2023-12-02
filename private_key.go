@@ -128,6 +128,11 @@ func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
 	}
 	copy(p.privateKey[:], data[46:78])
 
+	cmp := subtle.ConstantTimeEq(int32(compareBytes(zero, p.privateKey)), -1) & subtle.ConstantTimeEq(int32(compareBytes(p.privateKey, n)), -1)
+	if cmp != 1 {
+		return nil, ErrorPrivateKeyNotInRange
+	}
+
 	return &p, nil
 }
 

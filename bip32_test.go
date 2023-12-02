@@ -193,6 +193,10 @@ var pubkeyFailureVectors = []struct {
 		expectedErr: ErrorZeroDepthAndNonZeroIndex,
 	},
 	{
+		encoded:     "DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHGMQzT7ayAmfo4z3gY5KfbrZWZ6St24UVf2Qgo6oujFktLHdHY4",
+		expectedErr: ErrorInvalidVersion,
+	},
+	{
 		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY",
 		expectedErr: nil,
 		skip:        true,
@@ -213,7 +217,6 @@ func TestPubkeyFailureVectors(t *testing.T) {
 var privkeyFailureVectors = []struct {
 	encoded     string
 	expectedErr error
-	skip        bool
 }{
 	{
 		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGTQQD3dC4H2D5GBj7vWvSQaaBv5cxi9gafk7NF3pnBju6dwKvH",
@@ -236,14 +239,16 @@ var privkeyFailureVectors = []struct {
 		expectedErr: ErrorZeroDepthAndNonZeroIndex,
 	},
 	{
+		encoded:     "DMwo58pR1QLEFihHiXPVykYB6fJmsTeHvyTp7hRThAtCX8CvYzgPcn8XnmdfHPmHJiEDXkTiJTVV9rHEBUem2mwVbbNfvT2MTcAqj3nesx8uBf9",
+		expectedErr: ErrorInvalidVersion,
+	},
+	{
 		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzF93Y5wvzdUayhgkkFoicQZcP3y52uPPxFnfoLZB21Teqt1VvEHx",
-		expectedErr: nil,
-		skip:        true,
+		expectedErr: ErrorPrivateKeyNotInRange,
 	},
 	{
 		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD5SDKr24z3aiUvKr9bJpdrcLg1y3G",
-		expectedErr: ErrorInvalidPrivateKey,
-		skip:        true,
+		expectedErr: ErrorPrivateKeyNotInRange,
 	},
 	{
 		encoded:     "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHL",
@@ -253,9 +258,6 @@ var privkeyFailureVectors = []struct {
 
 func TestPrivkeyFailureVectors(t *testing.T) {
 	for _, vector := range privkeyFailureVectors {
-		if vector.skip {
-			continue
-		}
 		priv, err := B58DeserializePrivateKey(vector.encoded)
 		assert.Nil(t, priv, vector.encoded, vector.expectedErr)
 		assert.Equal(t, vector.expectedErr, err, vector.encoded, vector.expectedErr)

@@ -16,6 +16,7 @@ var (
 	ErrorChecksumMismatch                     = errors.New("checksum mismatch")
 	ErrorZeroDepthAndNonZeroParentFingerprint = errors.New("zero depth with non-zero parent fingerprint")
 	ErrorZeroDepthAndNonZeroIndex             = errors.New("zero depth with non-zero index")
+	ErrorPrivateKeyNotInRange                 = errors.New("private key not in range (1 <= p <= n-1)")
 )
 
 func NewMasterKey(seed []byte) *PrivateKey {
