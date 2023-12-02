@@ -128,8 +128,8 @@ func TestVectors(t *testing.T) {
 
 		seed, _ := hex.DecodeString(vector.seed)
 		master := NewMasterKey(seed)
-		serPrv := base58EncodeKeyBytes(master.Serialize())
-		serPub := base58EncodeKeyBytes(master.GetPublicKey().Serialize())
+		serPrv := master.B58Serialize()
+		serPub := master.GetPublicKey().B58Serialize()
 		assert.Equal(t, vector.key.extPub, serPub)
 		assert.Equal(t, vector.key.extPrv, serPrv)
 		for _, child := range vector.key.children {
@@ -142,8 +142,8 @@ func testChild(t *testing.T, prv *PrivateKey, pub *PublicKey, child child) {
 	childPrv, err := prv.NewChildKey(child.index)
 	assert.Nil(t, err)
 	childPub := childPrv.GetPublicKey()
-	serPrv0 := base58EncodeKeyBytes(childPrv.Serialize())
-	serPub0 := base58EncodeKeyBytes(childPub.Serialize())
+	serPrv0 := childPrv.B58Serialize()
+	serPub0 := childPub.B58Serialize()
 	assert.Equal(t, child.key.extPrv, serPrv0)
 	assert.Equal(t, child.key.extPub, serPub0)
 	if child.index < FirstHardenedChildIndex {
@@ -153,5 +153,50 @@ func testChild(t *testing.T, prv *PrivateKey, pub *PublicKey, child child) {
 	}
 	for _, grandchild := range child.key.children {
 		testChild(t, childPrv, childPub, grandchild)
+	}
+}
+
+var pubkeyFailureVectors = []struct {
+	encoded     string
+	expectedErr error
+	skip        bool
+}{
+	{
+		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm",
+		expectedErr: ErrorInvalidPublicKey,
+	},
+	{
+		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Txnt3siSujt9RCVYsx4qHZGc62TG4McvMGcAUjeuwZdduYEvFn",
+		expectedErr: ErrorInvalidPublicKey,
+	},
+	{
+		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6N8ZMMXctdiCjxTNq964yKkwrkBJJwpzZS4HS2fxvyYUA4q2Xe4",
+		expectedErr: ErrorInvalidPublicKey,
+	},
+	{
+		encoded:     "xpub661no6RGEX3uJkY4bNnPcw4URcQTrSibUZ4NqJEw5eBkv7ovTwgiT91XX27VbEXGENhYRCf7hyEbWrR3FewATdCEebj6znwMfQkhRYHRLpJ",
+		expectedErr: nil,
+		skip:        true,
+	},
+	{
+		encoded:     "xpub661MyMwAuDcm6CRQ5N4qiHKrJ39Xe1R1NyfouMKTTWcguwVcfrZJaNvhpebzGerh7gucBvzEQWRugZDuDXjNDRmXzSZe4c7mnTK97pTvGS8",
+		expectedErr: nil,
+		skip:        true,
+	},
+	{
+		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY",
+		expectedErr: nil,
+		skip:        true,
+	},
+}
+
+func TestPubkeyFailureVectors(t *testing.T) {
+	for _, vector := range pubkeyFailureVectors {
+		if vector.skip {
+			continue
+		}
+		pub, err := B58DeserializePublicKey(vector.encoded)
+		assert.Nil(t, pub, vector.encoded, vector.expectedErr)
+		assert.Equal(t, vector.expectedErr, err, vector.encoded, vector.expectedErr)
 	}
 }
