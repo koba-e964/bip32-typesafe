@@ -6,6 +6,7 @@ import (
 	"crypto/sha512"
 	"encoding/binary"
 
+	//lint:ignore SA1019 we want to implement a bip32-oriented package, so using RIPEMD-160 is inevitable.
 	"golang.org/x/crypto/ripemd160"
 )
 

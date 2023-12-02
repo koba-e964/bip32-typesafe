@@ -1,6 +1,6 @@
 module github.com/koba-e964/bip32-typesafe
 
-go 1.21.2
+go 1.21
 
 require (
 	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec

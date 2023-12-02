@@ -5,10 +5,12 @@ import (
 	"math/big"
 )
 
-// VartimeDecode writes into `output`.
+// VartimeDecode writes into output.
 //
-// If the resulting integer doesn't fit in `output`,
+// If the resulting integer doesn't fit in output,
 // the higher part will be truncated.
+//
+// This function does not have a constant-time guarantee.
 func VartimeDecode(encoded string, output []byte) {
 	tmp := big.NewInt(0)
 	radix := big.NewInt(58)
@@ -42,10 +44,12 @@ func VartimeDecode(encoded string, output []byte) {
 	tmp.FillBytes(output)
 }
 
-// Decode writes into `output`.
+// VartimeDecode writes into output.
 //
-// If the resulting integer doesn't fit in `output`,
+// If the resulting integer doesn't fit in output,
 // the higher part will be truncated.
+//
+// This function runs in constant time.
 func Decode(encoded string, output []byte) {
 	targetLen := len(output)
 	tmp := make([]uint32, (targetLen+3)/4)

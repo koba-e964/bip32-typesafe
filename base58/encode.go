@@ -1,3 +1,5 @@
+// Package base58 handles encoding/decoding of base58.
+// This package provides functions that work constant-time, as well as their variable-time counterparts.
 package base58
 
 import (
@@ -5,7 +7,7 @@ import (
 	"math/big"
 )
 
-// VartimeEncode encodes a byte slice into a base58 string with length `resultLength`.
+// VartimeEncode encodes a byte slice into a base58 string with length resultLength.
 //
 // This function does not have a constant-time guarantee.
 func VartimeEncode(a []byte, resultLength int) string {
@@ -23,7 +25,7 @@ func VartimeEncode(a []byte, resultLength int) string {
 	return string(result)
 }
 
-// Encode encodes a byte slice into a base58 string with length `resultLength`.
+// Encode encodes a byte slice into a base58 string with length resultLength.
 //
 // This function runs in constant time.
 func Encode(a []byte, resultLength int) string {
