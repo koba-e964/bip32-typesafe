@@ -111,7 +111,15 @@ func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
 
 	copy(p.parentFingerprint[:], data[5:9])
 
+	if (subtle.ConstantTimeByteEq(p.depth, 0) & (subtle.ConstantTimeCompare(p.parentFingerprint[:], make([]byte, 4)) ^ 1)) == 1 {
+		return nil, ErrorZeroDepthAndNonZeroParentFingerprint
+	}
+
 	copy(p.childNumber[:], data[9:13])
+
+	if (subtle.ConstantTimeByteEq(p.depth, 0) & (subtle.ConstantTimeCompare(p.childNumber[:], make([]byte, 4)) ^ 1)) == 1 {
+		return nil, ErrorZeroDepthAndNonZeroIndex
+	}
 
 	copy(p.chainCode[:], data[13:45])
 

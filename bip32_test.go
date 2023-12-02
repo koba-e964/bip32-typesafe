@@ -186,13 +186,11 @@ var pubkeyFailureVectors = []struct {
 	},
 	{
 		encoded:     "xpub661no6RGEX3uJkY4bNnPcw4URcQTrSibUZ4NqJEw5eBkv7ovTwgiT91XX27VbEXGENhYRCf7hyEbWrR3FewATdCEebj6znwMfQkhRYHRLpJ",
-		expectedErr: nil,
-		skip:        true,
+		expectedErr: ErrorZeroDepthAndNonZeroParentFingerprint,
 	},
 	{
 		encoded:     "xpub661MyMwAuDcm6CRQ5N4qiHKrJ39Xe1R1NyfouMKTTWcguwVcfrZJaNvhpebzGerh7gucBvzEQWRugZDuDXjNDRmXzSZe4c7mnTK97pTvGS8",
-		expectedErr: nil,
-		skip:        true,
+		expectedErr: ErrorZeroDepthAndNonZeroIndex,
 	},
 	{
 		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY",
@@ -231,13 +229,11 @@ var privkeyFailureVectors = []struct {
 	},
 	{
 		encoded:     "xprv9s2SPatNQ9Vc6GTbVMFPFo7jsaZySyzk7L8n2uqKXJen3KUmvQNTuLh3fhZMBoG3G4ZW1N2kZuHEPY53qmbZzCHshoQnNf4GvELZfqTUrcv",
-		expectedErr: ErrorInvalidPrivateKey,
-		skip:        true,
+		expectedErr: ErrorZeroDepthAndNonZeroParentFingerprint,
 	},
 	{
 		encoded:     "xprv9s21ZrQH4r4TsiLvyLXqM9P7k1K3EYhA1kkD6xuquB5i39AU8KF42acDyL3qsDbU9NmZn6MsGSUYZEsuoePmjzsB3eFKSUEh3Gu1N3cqVUN",
-		expectedErr: nil,
-		skip:        true,
+		expectedErr: ErrorZeroDepthAndNonZeroIndex,
 	},
 	{
 		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzF93Y5wvzdUayhgkkFoicQZcP3y52uPPxFnfoLZB21Teqt1VvEHx",

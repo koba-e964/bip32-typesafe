@@ -7,13 +7,15 @@ import (
 )
 
 var (
-	ErrorHardenedPublicChildKey = errors.New("can't create a hardened child key from a public key")
-	ErrorTooDeepKey             = errors.New("depth can't be >= 256")
-	ErrorInvalidKeyLength       = errors.New("invalid key length")
-	ErrorInvalidVersion         = errors.New("version is invalid")
-	ErrorInvalidPublicKey       = errors.New("public key is invalid")
-	ErrorInvalidPrivateKey      = errors.New("private key is invalid")
-	ErrorChecksumMismatch       = errors.New("checksum mismatch")
+	ErrorHardenedPublicChildKey               = errors.New("can't create a hardened child key from a public key")
+	ErrorTooDeepKey                           = errors.New("depth can't be >= 256")
+	ErrorInvalidKeyLength                     = errors.New("invalid key length")
+	ErrorInvalidVersion                       = errors.New("version is invalid")
+	ErrorInvalidPublicKey                     = errors.New("public key is invalid")
+	ErrorInvalidPrivateKey                    = errors.New("private key is invalid")
+	ErrorChecksumMismatch                     = errors.New("checksum mismatch")
+	ErrorZeroDepthAndNonZeroParentFingerprint = errors.New("zero depth with non-zero parent fingerprint")
+	ErrorZeroDepthAndNonZeroIndex             = errors.New("zero depth with non-zero index")
 )
 
 func NewMasterKey(seed []byte) *PrivateKey {
