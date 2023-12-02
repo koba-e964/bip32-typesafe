@@ -6,7 +6,7 @@ import (
 	"encoding/hex"
 )
 
-type Scalar = [32]byte
+type Scalar [32]byte
 
 var nBytes, _ = hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
 var Order = Scalar(nBytes)
@@ -20,7 +20,7 @@ func SCAdd(a Scalar, b Scalar) Scalar {
 		a[i] = sum
 		carry = thisCarry
 	}
-	conditionallySubtract(int(carry), &a, Order)
+	conditionallySubtract(int(carry), (*[32]byte)(&a), Order)
 	scReduce(&a)
 	return a
 }
@@ -30,7 +30,7 @@ func SCAdd(a Scalar, b Scalar) Scalar {
 func scReduce(a *Scalar) {
 	cmp := CompareBytes(*a, Order)
 	isGe := subtle.ConstantTimeLessOrEq(0, cmp)
-	conditionallySubtract(isGe, a, Order)
+	conditionallySubtract(isGe, (*[32]byte)(a), Order)
 }
 
 // if cond == 1, a -= n. otherwise, a is unchanged.
@@ -82,7 +82,7 @@ func subTwoBytes(a byte, b byte, borrow byte) (byte, byte) {
 }
 
 // -1: lt, 0: eq, 1: gt
-func CompareBytes(a Scalar, b Scalar) int {
+func CompareBytes(a [32]byte, b [32]byte) int {
 	result := 0
 	for i := 0; i < len(a); i++ {
 		le := subtle.ConstantTimeLessOrEq(int(a[i]), int(b[i]))

@@ -18,6 +18,6 @@ func TestInplaceSubtract(t *testing.T) {
 	var a, b Scalar
 	a[31] = 4
 	b[31] = 7
-	inPlaceSubtract(&a, b)
+	inPlaceSubtract((*[32]byte)(&a), b)
 	assert.Equal(t, a[0], byte(0xff))
 }

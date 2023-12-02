@@ -11,7 +11,7 @@ import (
 
 var ErrorInvalidPoint = errors.New("invalid point on secp256k1")
 
-type Compressed = [33]byte
+type Compressed [33]byte
 
 var (
 	gxBytes, _    = hex.DecodeString("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
@@ -58,7 +58,7 @@ func Uncompress(a Compressed) (*Point, error) {
 	}
 	// y != 0 always holds, so (-y) mod p = p - y always holds
 	negY := p
-	inPlaceSubtract(&negY, y)
+	inPlaceSubtract((*[32]byte)(&negY), y)
 	// Check if the sign is correct
 	diff := int((y[31] & 1) ^ (a[0] & 1))
 	for i := 0; i < len(y); i++ {

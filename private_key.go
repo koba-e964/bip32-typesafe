@@ -130,7 +130,7 @@ func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
 	copy(p.privateKey[:], data[46:78])
 
 	// 0 < privateKey < secp256k1.Order
-	inRange := subtle.ConstantTimeEq(int32(secp256k1.CompareBytes(secp256k1.FE{}, p.privateKey)), -1) &
+	inRange := subtle.ConstantTimeEq(int32(secp256k1.CompareBytes([32]byte{}, p.privateKey)), -1) &
 		subtle.ConstantTimeEq(int32(secp256k1.CompareBytes(p.privateKey, secp256k1.Order)), -1)
 	if inRange != 1 {
 		return nil, ErrorPrivateKeyNotInRange

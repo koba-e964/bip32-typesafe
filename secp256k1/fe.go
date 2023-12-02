@@ -10,7 +10,7 @@ var pBytes, _ = hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 var p = FE(pBytes)
 var pBig = big.NewInt(0).SetBytes(pBytes)
 
-type FE = [32]byte
+type FE [32]byte
 
 func feMul(a FE, b FE) FE {
 	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
@@ -103,7 +103,7 @@ func feAdd(a FE, b FE) FE {
 		a[i] = sum
 		carry = thisCarry
 	}
-	conditionallySubtract(int(carry), &a, p)
+	conditionallySubtract(int(carry), (*[32]byte)(&a), p)
 	feReduce(&a)
 	return a
 }
@@ -118,7 +118,7 @@ func feSub(a FE, b FE) FE {
 		a[i] = diff
 		borrow = thisBorrow
 	}
-	conditionallyAdd(int(borrow^1), &a, p)
+	conditionallyAdd(int(borrow^1), (*[32]byte)(&a), p)
 	return a
 }
 
@@ -142,13 +142,13 @@ func feModSqrt(a FE) FE {
 // reduction mod p
 // constant-time
 func feReduce(a *FE) {
-	cmp := CompareBytes(*a, p)
+	cmp := CompareBytes([32]byte(*a), [32]byte(p))
 	isGe := subtle.ConstantTimeLessOrEq(0, cmp)
-	conditionallySubtract(isGe, a, p)
+	conditionallySubtract(isGe, (*[32]byte)(a), p)
 }
 
 // Returns a < p, runs in constant-time.
 func feIsValid(a FE) int {
-	cmp := CompareBytes(a, p)
+	cmp := CompareBytes([32]byte(a), [32]byte(p))
 	return subtle.ConstantTimeEq(int32(cmp), -1)
 }
