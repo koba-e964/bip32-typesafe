@@ -1,4 +1,4 @@
-package bip32
+package secp256k1
 
 import (
 	"testing"
@@ -9,28 +9,28 @@ import (
 func TestGEAdd(t *testing.T) {
 	base := &Point{x: gx, y: gy, z: one}
 	zero := &Point{x: one, y: one}
-	result := geAdd(base, zero)
+	result := GEAdd(base, zero)
 	assert.Equal(t, base, result)
 }
 
 func TestGEPoint0(t *testing.T) {
 	var two FE
 	two[31] = 2
-	expected := compress(vartimePoint(two))
-	result := compress(gePoint(two))
+	expected := Compress(VartimePoint(two))
+	result := Compress(GEPoint(two))
 	assert.Equal(t, expected, result)
 }
 
 func TestGEPoint1(t *testing.T) {
 	expected := zero
-	result := gePoint(n)
+	result := GEPoint(Order)
 	assert.Equal(t, expected, result.z)
 }
 
 func TestGEPoint2(t *testing.T) {
-	exp := n
+	exp := Order
 	exp[31] += 1
-	expected := compress(gePoint(one))
-	result := compress(gePoint(exp))
+	expected := Compress(GEPoint(one))
+	result := Compress(GEPoint(exp))
 	assert.Equal(t, expected, result)
 }

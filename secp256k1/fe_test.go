@@ -1,4 +1,4 @@
-package bip32
+package secp256k1
 
 import (
 	"encoding/hex"

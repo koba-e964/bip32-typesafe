@@ -1,5 +1,5 @@
 // Reference: https://github.com/openssh/openssh-portable/blob/V_9_0_P1/ge25519.c
-package bip32
+package secp256k1
 
 import (
 	"crypto/subtle"
@@ -33,7 +33,7 @@ func init() {
 	one[31] = 1
 }
 
-func uncompress(a Compressed) (*Point, error) {
+func Uncompress(a Compressed) (*Point, error) {
 	x := [32]byte(a[1:])
 	// We are in error condition, this can be an early return
 	// assert a[0] == 2 or a[0] == 3
@@ -54,7 +54,7 @@ func uncompress(a Compressed) (*Point, error) {
 	// checks if ySquare was a quadratic residue by computing y * y == ySquare
 	ySquare2 := feMul(y, y)
 	if subtle.ConstantTimeCompare(ySquare[:], ySquare2[:]) != 1 {
-		return nil, ErrorInvalidPublicKey
+		return nil, ErrorInvalidPoint
 	}
 	// y != 0 always holds, so (-y) mod p = p - y always holds
 	negY := p
@@ -67,7 +67,7 @@ func uncompress(a Compressed) (*Point, error) {
 	return &Point{x: x, y: y, z: one}, nil
 }
 
-func compress(p *Point) Compressed {
+func Compress(p *Point) Compressed {
 	var result [33]byte
 	zInv := feInv(p.z)
 	z2 := feSquare(zInv)
@@ -79,8 +79,8 @@ func compress(p *Point) Compressed {
 	return result
 }
 
-func geAdd(a *Point, b *Point) *Point {
-	sum1 := geDouble(a)
+func GEAdd(a *Point, b *Point) *Point {
+	sum1 := GEDouble(a)
 	sum2 := geAddDistinct(a, b)
 	cond := subtle.ConstantTimeCompare(sum2.x[:], zero[:])
 	cond &= subtle.ConstantTimeCompare(sum2.y[:], zero[:])
@@ -88,7 +88,7 @@ func geAdd(a *Point, b *Point) *Point {
 	return choicePoint(cond, sum1, sum2)
 }
 
-func geDouble(p *Point) *Point {
+func GEDouble(p *Point) *Point {
 	// https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
 	a := feSquare(p.x)
 	b := feSquare(p.y)
@@ -140,7 +140,7 @@ func geAddDistinct(a *Point, b *Point) *Point {
 	return choicePoint(aIsZero, b, choicePoint(bIsZero, a, p))
 }
 
-func vartimePoint(n Scalar) *Point {
+func VartimePoint(n Scalar) *Point {
 	curve := btcutil.Secp256k1()
 	x, y := curve.ScalarBaseMult(n[:])
 	var xBytes, yBytes [32]byte
@@ -149,14 +149,14 @@ func vartimePoint(n Scalar) *Point {
 	return &Point{x: xBytes, y: yBytes, z: one}
 }
 
-func gePoint(n Scalar) *Point {
+func GEPoint(n Scalar) *Point {
 	current := &Point{x: gx, y: gy, z: one}
 	prod := &Point{x: one, y: one}
 	for i := 0; i < 256; i++ {
-		prodCurrent := geAdd(prod, current)
+		prodCurrent := GEAdd(prod, current)
 		cond := int(n[31-i/8]>>(i%8)) & 1
 		prod = choicePoint(cond, prodCurrent, prod)
-		current = geAdd(current, current)
+		current = GEAdd(current, current)
 	}
 	return prod
 }

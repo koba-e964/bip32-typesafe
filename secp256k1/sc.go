@@ -1,5 +1,5 @@
 // Reference: https://github.com/openssh/openssh-portable/blob/V_9_0_P1/sc25519.c
-package bip32
+package secp256k1
 
 import (
 	"crypto/subtle"
@@ -9,18 +9,18 @@ import (
 type Scalar = [32]byte
 
 var nBytes, _ = hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
-var n = Scalar(nBytes)
+var Order = Scalar(nBytes)
 
 // (a + b) mod n
 // constant-time
-func scAdd(a Scalar, b Scalar) Scalar {
+func SCAdd(a Scalar, b Scalar) Scalar {
 	var carry byte
 	for i := len(a) - 1; i >= 0; i-- {
 		thisCarry, sum := sumTwoBytes(a[i], b[i], carry)
 		a[i] = sum
 		carry = thisCarry
 	}
-	conditionallySubtract(int(carry), &a, n)
+	conditionallySubtract(int(carry), &a, Order)
 	scReduce(&a)
 	return a
 }
@@ -28,9 +28,9 @@ func scAdd(a Scalar, b Scalar) Scalar {
 // reduction mod n
 // constant-time
 func scReduce(a *Scalar) {
-	cmp := compareBytes(*a, n)
+	cmp := CompareBytes(*a, Order)
 	isGe := subtle.ConstantTimeLessOrEq(0, cmp)
-	conditionallySubtract(isGe, a, n)
+	conditionallySubtract(isGe, a, Order)
 }
 
 // if cond == 1, a -= n. otherwise, a is unchanged.
@@ -82,7 +82,7 @@ func subTwoBytes(a byte, b byte, borrow byte) (byte, byte) {
 }
 
 // -1: lt, 0: eq, 1: gt
-func compareBytes(a Scalar, b Scalar) int {
+func CompareBytes(a Scalar, b Scalar) int {
 	result := 0
 	for i := 0; i < len(a); i++ {
 		le := subtle.ConstantTimeLessOrEq(int(a[i]), int(b[i]))

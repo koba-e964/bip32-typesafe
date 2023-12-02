@@ -1,4 +1,4 @@
-package bip32
+package secp256k1
 
 import (
 	"testing"
@@ -7,11 +7,11 @@ import (
 )
 
 func TestSCAdd(t *testing.T) {
-	a := n
+	a := Order
 	a[31] -= 1
 	b := a
 	b[31] -= 1
-	assert.Equal(t, b, scAdd(a, a))
+	assert.Equal(t, b, SCAdd(a, a))
 }
 
 func TestInplaceSubtract(t *testing.T) {

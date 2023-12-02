@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 
 	"github.com/koba-e964/bip32-typesafe/base58"
+	"github.com/koba-e964/bip32-typesafe/secp256k1"
 )
 
 type PrivateKey struct {
@@ -47,7 +48,7 @@ func (p *PrivateKey) GetPublicKey() *PublicKey {
 		parentFingerprint: p.parentFingerprint,
 		childNumber:       p.childNumber,
 		chainCode:         p.chainCode,
-		publicKey:         compress(gePoint(p.privateKey)),
+		publicKey:         secp256k1.Compress(secp256k1.GEPoint(p.privateKey)),
 	}
 	return &publicKey
 }
@@ -128,8 +129,10 @@ func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
 	}
 	copy(p.privateKey[:], data[46:78])
 
-	cmp := subtle.ConstantTimeEq(int32(compareBytes(zero, p.privateKey)), -1) & subtle.ConstantTimeEq(int32(compareBytes(p.privateKey, n)), -1)
-	if cmp != 1 {
+	// 0 < privateKey < secp256k1.Order
+	inRange := subtle.ConstantTimeEq(int32(secp256k1.CompareBytes(secp256k1.FE{}, p.privateKey)), -1) &
+		subtle.ConstantTimeEq(int32(secp256k1.CompareBytes(p.privateKey, secp256k1.Order)), -1)
+	if inRange != 1 {
 		return nil, ErrorPrivateKeyNotInRange
 	}
 
@@ -140,7 +143,7 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
 	}
-	pubPart := compress(gePoint(p.privateKey))
+	pubPart := secp256k1.Compress(secp256k1.GEPoint(p.privateKey))
 	keyData := [33]byte(append([]byte{0x00}, p.privateKey[:]...))
 	if childIdx < FirstHardenedChildIndex {
 		keyData = pubPart
@@ -154,7 +157,7 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 		parentFingerprint: [4]byte(hash160(pubPart[:])[:4]),
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
-		privateKey:        scAdd(ll, p.privateKey),
+		privateKey:        secp256k1.SCAdd(ll, p.privateKey),
 	}
 	return &child, nil
 }

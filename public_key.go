@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 
 	"github.com/koba-e964/bip32-typesafe/base58"
+	"github.com/koba-e964/bip32-typesafe/secp256k1"
 )
 
 type PublicKey struct {
@@ -110,8 +111,8 @@ func DeserializePublicKey(data [KeyLengthInBytes]byte) (*PublicKey, error) {
 	copy(p.publicKey[:], data[45:78])
 
 	// checks if p.publicKey is valid
-	if _, err := uncompress(p.publicKey); err != nil {
-		return nil, err
+	if _, err := secp256k1.Uncompress(p.publicKey); err != nil {
+		return nil, ErrorInvalidPublicKey
 	}
 
 	return &p, nil
@@ -124,21 +125,21 @@ func (p *PublicKey) NewChildKey(childIdx uint32) (*PublicKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
 	}
-	uncompressed, err := uncompress(p.publicKey)
+	uncompressed, err := secp256k1.Uncompress(p.publicKey)
 	if err != nil {
 		return nil, err
 	}
 	l := hmacThing(p.chainCode, p.publicKey, childIdx)
 	ll := [32]byte(l[:32])
 	lr := [32]byte(l[32:])
-	derivedPubKey := geAdd(uncompressed, gePoint(ll))
+	derivedPubKey := secp256k1.GEAdd(uncompressed, secp256k1.GEPoint(ll))
 	child := PublicKey{
 		version:           p.version,
 		depth:             p.depth + 1,
 		parentFingerprint: [4]byte(hash160(p.publicKey[:])),
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
-		publicKey:         compress(derivedPubKey),
+		publicKey:         secp256k1.Compress(derivedPubKey),
 	}
 	return &child, nil
 }

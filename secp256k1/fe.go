@@ -1,4 +1,4 @@
-package bip32
+package secp256k1
 
 import (
 	"crypto/subtle"
@@ -142,21 +142,13 @@ func feModSqrt(a FE) FE {
 // reduction mod p
 // constant-time
 func feReduce(a *FE) {
-	cmp := compareBytes(*a, p)
+	cmp := CompareBytes(*a, p)
 	isGe := subtle.ConstantTimeLessOrEq(0, cmp)
 	conditionallySubtract(isGe, a, p)
 }
 
 // Returns a < p, runs in constant-time.
 func feIsValid(a FE) int {
-	cmp := compareBytes(a, p)
+	cmp := CompareBytes(a, p)
 	return subtle.ConstantTimeEq(int32(cmp), -1)
-}
-
-func choiceFE(cond int, one FE, zero FE) FE {
-	var p FE
-	for j := 0; j < len(one); j++ {
-		p[j] = byte(subtle.ConstantTimeSelect(cond, int(one[j]), int(zero[j])))
-	}
-	return p
 }
