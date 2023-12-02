@@ -125,13 +125,18 @@ var tests = []testVector{
 
 func TestVectors(t *testing.T) {
 	for _, vector := range tests {
-
 		seed, _ := hex.DecodeString(vector.seed)
 		master := NewMasterKey(seed)
 		serPrv := master.B58Serialize()
 		serPub := master.GetPublicKey().B58Serialize()
 		assert.Equal(t, vector.key.extPub, serPub)
 		assert.Equal(t, vector.key.extPrv, serPrv)
+		deserPrv0, err := B58DeserializePrivateKey(vector.key.extPrv)
+		assert.Nil(t, err)
+		deserPub0, err := B58DeserializePublicKey(vector.key.extPub)
+		assert.Nil(t, err)
+		assert.Equal(t, master.GetPublicKey(), deserPub0)
+		assert.Equal(t, master, deserPrv0)
 		for _, child := range vector.key.children {
 			testChild(t, master, master.GetPublicKey(), child)
 		}
@@ -146,6 +151,12 @@ func testChild(t *testing.T, prv *PrivateKey, pub *PublicKey, child child) {
 	serPub0 := childPub.B58Serialize()
 	assert.Equal(t, child.key.extPrv, serPrv0)
 	assert.Equal(t, child.key.extPub, serPub0)
+	deserPrv0, err := B58DeserializePrivateKey(child.key.extPrv)
+	assert.Nil(t, err)
+	deserPub0, err := B58DeserializePublicKey(child.key.extPub)
+	assert.Nil(t, err)
+	assert.Equal(t, childPrv, deserPrv0)
+	assert.Equal(t, childPub, deserPub0)
 	if child.index < FirstHardenedChildIndex {
 		childPubFromPub, err := pub.NewChildKey(child.index)
 		assert.Nil(t, err)
@@ -197,6 +208,60 @@ func TestPubkeyFailureVectors(t *testing.T) {
 		}
 		pub, err := B58DeserializePublicKey(vector.encoded)
 		assert.Nil(t, pub, vector.encoded, vector.expectedErr)
+		assert.Equal(t, vector.expectedErr, err, vector.encoded, vector.expectedErr)
+	}
+}
+
+var privkeyFailureVectors = []struct {
+	encoded     string
+	expectedErr error
+	skip        bool
+}{
+	{
+		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGTQQD3dC4H2D5GBj7vWvSQaaBv5cxi9gafk7NF3pnBju6dwKvH",
+		expectedErr: ErrorInvalidPrivateKey,
+	},
+	{
+		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFGpWnsj83BHtEy5Zt8CcDr1UiRXuWCmTQLxEK9vbz5gPstX92JQ",
+		expectedErr: ErrorInvalidPrivateKey,
+	},
+	{
+		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD9y5gkZ6Eq3Rjuahrv17fEQ3Qen6J",
+		expectedErr: ErrorInvalidPrivateKey,
+	},
+	{
+		encoded:     "xprv9s2SPatNQ9Vc6GTbVMFPFo7jsaZySyzk7L8n2uqKXJen3KUmvQNTuLh3fhZMBoG3G4ZW1N2kZuHEPY53qmbZzCHshoQnNf4GvELZfqTUrcv",
+		expectedErr: ErrorInvalidPrivateKey,
+		skip:        true,
+	},
+	{
+		encoded:     "xprv9s21ZrQH4r4TsiLvyLXqM9P7k1K3EYhA1kkD6xuquB5i39AU8KF42acDyL3qsDbU9NmZn6MsGSUYZEsuoePmjzsB3eFKSUEh3Gu1N3cqVUN",
+		expectedErr: nil,
+		skip:        true,
+	},
+	{
+		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzF93Y5wvzdUayhgkkFoicQZcP3y52uPPxFnfoLZB21Teqt1VvEHx",
+		expectedErr: nil,
+		skip:        true,
+	},
+	{
+		encoded:     "xprv9s21ZrQH143K24Mfq5zL5MhWK9hUhhGbd45hLXo2Pq2oqzMMo63oStZzFAzHGBP2UuGCqWLTAPLcMtD5SDKr24z3aiUvKr9bJpdrcLg1y3G",
+		expectedErr: ErrorInvalidPrivateKey,
+		skip:        true,
+	},
+	{
+		encoded:     "xprv9s21ZrQH143K3QTDL4LXw2F7HEK3wJUD2nW2nRk4stbPy6cq3jPPqjiChkVvvNKmPGJxWUtg6LnF5kejMRNNU3TGtRBeJgk33yuGBxrMPHL",
+		expectedErr: ErrorChecksumMismatch,
+	},
+}
+
+func TestPrivkeyFailureVectors(t *testing.T) {
+	for _, vector := range privkeyFailureVectors {
+		if vector.skip {
+			continue
+		}
+		priv, err := B58DeserializePrivateKey(vector.encoded)
+		assert.Nil(t, priv, vector.encoded, vector.expectedErr)
 		assert.Equal(t, vector.expectedErr, err, vector.encoded, vector.expectedErr)
 	}
 }

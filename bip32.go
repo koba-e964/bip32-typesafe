@@ -12,6 +12,7 @@ var (
 	ErrorInvalidKeyLength       = errors.New("invalid key length")
 	ErrorInvalidVersion         = errors.New("version is invalid")
 	ErrorInvalidPublicKey       = errors.New("public key is invalid")
+	ErrorInvalidPrivateKey      = errors.New("private key is invalid")
 	ErrorChecksumMismatch       = errors.New("checksum mismatch")
 )
 

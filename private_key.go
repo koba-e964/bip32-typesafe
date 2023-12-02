@@ -1,6 +1,11 @@
 package bip32
 
-import "encoding/binary"
+import (
+	"crypto/subtle"
+	"encoding/binary"
+
+	"github.com/koba-e964/bip32-typesafe/base58"
+)
 
 type PrivateKey struct {
 	version           [4]byte // privateKeyVersion or testnetPrivateKeyVersion
@@ -74,6 +79,48 @@ func (p *PrivateKey) Serialize() [KeyLengthInBytes]byte {
 // B58Serialize returns the base58 representation of this `PrivateKey`.
 func (p *PrivateKey) B58Serialize() string {
 	return base58EncodeKeyBytes(p.Serialize())
+}
+
+// B58DeserializePublicKey decodes base58-encoded strings and
+// returns a `PublicKey`.
+func B58DeserializePrivateKey(encoded string) (*PrivateKey, error) {
+	if len(encoded) != 111 {
+		return nil, ErrorInvalidKeyLength
+	}
+	var data [82]byte
+	base58.Decode(encoded, data[:])
+	return DeserializePrivateKey(data)
+}
+
+// DeserializePublicKey reads a []byte and
+// returns a `PublicKey`.
+func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
+	p := PrivateKey{}
+
+	chksum := checksum(data[:78])
+	if subtle.ConstantTimeCompare(data[78:], chksum[:]) != 1 {
+		return nil, ErrorChecksumMismatch
+	}
+
+	if (subtle.ConstantTimeCompare(data[:4], privateKeyVersion) | subtle.ConstantTimeCompare(data[:4], testnetPrivateKeyVersion)) != 1 {
+		return nil, ErrorInvalidVersion
+	}
+	p.version = [4]byte(data[:4])
+
+	p.depth = data[4]
+
+	copy(p.parentFingerprint[:], data[5:9])
+
+	copy(p.childNumber[:], data[9:13])
+
+	copy(p.chainCode[:], data[13:45])
+
+	if data[45] != 0 {
+		return nil, ErrorInvalidPrivateKey
+	}
+	copy(p.privateKey[:], data[46:78])
+
+	return &p, nil
 }
 
 func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
