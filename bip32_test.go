@@ -170,7 +170,6 @@ func testChild(t *testing.T, prv *PrivateKey, pub *PublicKey, child child) {
 var pubkeyFailureVectors = []struct {
 	encoded     string
 	expectedErr error
-	skip        bool
 }{
 	{
 		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6LBpB85b3D2yc8sfvZU521AAwdZafEz7mnzBBsz4wKY5fTtTQBm",
@@ -198,16 +197,12 @@ var pubkeyFailureVectors = []struct {
 	},
 	{
 		encoded:     "xpub661MyMwAqRbcEYS8w7XLSVeEsBXy79zSzH1J8vCdxAZningWLdN3zgtU6Q5JXayek4PRsn35jii4veMimro1xefsM58PgBMrvdYre8QyULY",
-		expectedErr: nil,
-		skip:        true,
+		expectedErr: ErrorInvalidPublicKey,
 	},
 }
 
 func TestPubkeyFailureVectors(t *testing.T) {
 	for _, vector := range pubkeyFailureVectors {
-		if vector.skip {
-			continue
-		}
 		pub, err := B58DeserializePublicKey(vector.encoded)
 		assert.Nil(t, pub, vector.encoded, vector.expectedErr)
 		assert.Equal(t, vector.expectedErr, err, vector.encoded, vector.expectedErr)

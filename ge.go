@@ -51,6 +51,11 @@ func uncompress(a Compressed) (*Point, error) {
 	xCube = feMul(xCube, x)
 	ySquare := feAdd(xCube, seven)
 	y := feModSqrt(ySquare)
+	// checks if ySquare was a quadratic residue by computing y * y == ySquare
+	ySquare2 := feMul(y, y)
+	if subtle.ConstantTimeCompare(ySquare[:], ySquare2[:]) != 1 {
+		return nil, ErrorInvalidPublicKey
+	}
 	// y != 0 always holds, so (-y) mod p = p - y always holds
 	negY := p
 	inPlaceSubtract(&negY, y)

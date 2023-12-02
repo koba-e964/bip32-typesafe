@@ -109,6 +109,11 @@ func DeserializePublicKey(data [KeyLengthInBytes]byte) (*PublicKey, error) {
 	}
 	copy(p.publicKey[:], data[45:78])
 
+	// checks if p.publicKey is valid
+	if _, err := uncompress(p.publicKey); err != nil {
+		return nil, err
+	}
+
 	return &p, nil
 }
 
