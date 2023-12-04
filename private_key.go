@@ -8,6 +8,7 @@ import (
 	"github.com/koba-e964/bip32-typesafe/secp256k1"
 )
 
+// A private key.
 type PrivateKey struct {
 	version           [4]byte // privateKeyVersion or testnetPrivateKeyVersion
 	depth             byte
@@ -17,26 +18,32 @@ type PrivateKey struct {
 	privateKey        secp256k1.Scalar
 }
 
+// Depth returns the depth of this PrivateKey. If the depth is 0, this key is a master key.
 func (p *PrivateKey) Depth() byte {
 	return p.depth
 }
 
+// ParentFingerprint returns the fingerprint of this PrivateKey's parent key. If this key is a master key, the fingerprint is filled with zero.
 func (p *PrivateKey) ParentFingerprint() [4]byte {
 	return p.parentFingerprint
 }
 
+// ChildNumber returns the child index of this PrivateKey. If this PrivateKey is a master key, this function returns 0.
 func (p *PrivateKey) ChildNumber() uint32 {
 	return binary.BigEndian.Uint32(p.childNumber[:])
 }
 
+// ChainCode returns the chain code of this PrivateKey. This value is used in generation of child keys.
 func (p *PrivateKey) ChainCode() [32]byte {
 	return p.chainCode
 }
 
-func (p *PrivateKey) PrivateKey() [32]byte {
+// PrivateKey returns the private key of secp256k1 in this PrivateKey.
+func (p *PrivateKey) PrivateKey() secp256k1.Scalar {
 	return p.privateKey
 }
 
+// GetPublicKey finds the corresponding PublicKey from this PrivateKey.
 func (p *PrivateKey) GetPublicKey() *PublicKey {
 	version := publicKeyVersion
 	if p.version == [4]byte(testnetPrivateKeyVersion) {
@@ -53,7 +60,7 @@ func (p *PrivateKey) GetPublicKey() *PublicKey {
 	return &publicKey
 }
 
-// B58Serialize returns the []byte representation of this `PrivateKey`.
+// B58Serialize returns the []byte representation of this PrivateKey.
 func (p *PrivateKey) Serialize() [KeyLengthInBytes]byte {
 	var result [KeyLengthInBytes]byte
 
@@ -77,13 +84,13 @@ func (p *PrivateKey) Serialize() [KeyLengthInBytes]byte {
 	return result
 }
 
-// B58Serialize returns the base58 representation of this `PrivateKey`.
+// B58Serialize returns the base58 representation of this PrivateKey.
 func (p *PrivateKey) B58Serialize() string {
 	return base58EncodeKeyBytes(p.Serialize())
 }
 
-// B58DeserializePublicKey decodes base58-encoded strings and
-// returns a `PublicKey`.
+// B58DeserializePrivateKey decodes base58-encoded strings and
+// returns a PrivateKey.
 func B58DeserializePrivateKey(encoded string) (*PrivateKey, error) {
 	if len(encoded) != 111 {
 		return nil, ErrorInvalidKeyLength
@@ -93,8 +100,8 @@ func B58DeserializePrivateKey(encoded string) (*PrivateKey, error) {
 	return DeserializePrivateKey(data)
 }
 
-// DeserializePublicKey reads a []byte and
-// returns a `PublicKey`.
+// DeserializePrivateKey reads a []byte and
+// returns a PrivateKey.
 func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
 	p := PrivateKey{}
 
@@ -139,6 +146,9 @@ func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
 	return &p, nil
 }
 
+// NewChildKey derives a new child key from this PrivateKey. The following errors may be returned:
+//   - ErrorTooDeepKey: if this PrivateKey has depth 255
+//   - ErrorInvalidPrivateKey: if the derived private key satisfies parse_{256}(I_L) >= n or k_i = 0 (with probability < 2^{-127})
 func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
@@ -158,6 +168,10 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
 		privateKey:        secp256k1.SCAdd(ll, p.privateKey),
+	}
+	cmp := secp256k1.SCIsValid(ll) & (subtle.ConstantTimeCompare(child.privateKey[:], make([]byte, 32)) ^ 1)
+	if cmp != 1 {
+		return nil, ErrorInvalidPrivateKey
 	}
 	return &child, nil
 }

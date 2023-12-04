@@ -34,6 +34,12 @@ func scReduce(a *Scalar) {
 	conditionallySubtract(isGe, (*[32]byte)(a), Order)
 }
 
+// SCIsValid returns a < Order. It runs in constant-time.
+func SCIsValid(a fe) int {
+	cmp := CompareBytes([32]byte(a), Order)
+	return subtle.ConstantTimeEq(int32(cmp), -1)
+}
+
 // if cond == 1, a -= n. otherwise, a is unchanged.
 // if cond is another value, the result is undefined.
 func conditionallySubtract(cond int, a *[32]byte, n [32]byte) {

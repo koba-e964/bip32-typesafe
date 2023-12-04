@@ -1,3 +1,6 @@
+// Package bip32 provides BIP 32 related functions.
+//
+// Spec: https://github.com/bitcoin/bips/blob/master/bip-0032.mediawiki
 package bip32
 
 import (
@@ -19,6 +22,14 @@ var (
 	ErrorPrivateKeyNotInRange                 = errors.New("private key not in range (1 <= p <= n-1)")
 )
 
+// NewMasterKey generates a new master private key with the given seed.
+//
+// Example:
+//
+//	// the length of a seed should be between 128 and 512 bits;
+//	// this length (32 bits) is too short and for illustration purpose only
+//	seed, err := hex.DecodeString("01020304")
+//	master := NewMasterKey(seed)
 func NewMasterKey(seed []byte) *PrivateKey {
 	hmac := hmac.New(sha512.New, []byte("Bitcoin seed"))
 	_, _ = hmac.Write(seed)
