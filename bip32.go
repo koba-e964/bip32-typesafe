@@ -47,7 +47,7 @@ func NewMasterKey(seed []byte) *PrivateKey {
 	return &master
 }
 
-// MasterPublicKeyFromRaw returns a master public key for mainnet with the given `publicKey` and `chainCode`.
+// MasterPublicKeyFromRaw returns a master public key for mainnet with the given public key and the chain code.
 func MasterPublicKeyFromRaw(publicKey [33]byte, chainCode [32]byte) *PublicKey {
 	master := PublicKey{
 		version:           [4]byte(publicKeyVersion),

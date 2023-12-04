@@ -33,7 +33,7 @@ func (p *PrivateKey) ChildNumber() uint32 {
 	return binary.BigEndian.Uint32(p.childNumber[:])
 }
 
-// ChainCode returns the chain code of this PrivateKey. This value is used in generation of child keys.
+// ChainCode returns the chain code of this PrivateKey. This value is used in derivation of child keys.
 func (p *PrivateKey) ChainCode() [32]byte {
 	return p.chainCode
 }
@@ -89,7 +89,7 @@ func (p *PrivateKey) B58Serialize() string {
 	return base58EncodeKeyBytes(p.Serialize())
 }
 
-// B58DeserializePrivateKey decodes base58-encoded strings and
+// B58DeserializePrivateKey decodes a base58-encoded string and
 // returns a PrivateKey.
 func B58DeserializePrivateKey(encoded string) (*PrivateKey, error) {
 	if len(encoded) != 111 {
