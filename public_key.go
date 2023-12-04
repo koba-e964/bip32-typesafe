@@ -14,7 +14,7 @@ type PublicKey struct {
 	parentFingerprint [4]byte
 	childNumber       [4]byte
 	chainCode         [32]byte
-	publicKey         [33]byte
+	publicKey         secp256k1.Compressed
 }
 
 func (p *PublicKey) Depth() byte {
@@ -111,7 +111,7 @@ func DeserializePublicKey(data [KeyLengthInBytes]byte) (*PublicKey, error) {
 	copy(p.publicKey[:], data[45:78])
 
 	// checks if p.publicKey is valid
-	if _, err := secp256k1.Uncompress(p.publicKey); err != nil {
+	if _, err := p.publicKey.Uncompress(); err != nil {
 		return nil, ErrorInvalidPublicKey
 	}
 
@@ -125,7 +125,7 @@ func (p *PublicKey) NewChildKey(childIdx uint32) (*PublicKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
 	}
-	uncompressed, err := secp256k1.Uncompress(p.publicKey)
+	uncompressed, err := p.publicKey.Uncompress()
 	if err != nil {
 		return nil, err
 	}
@@ -139,7 +139,7 @@ func (p *PublicKey) NewChildKey(childIdx uint32) (*PublicKey, error) {
 		parentFingerprint: [4]byte(hash160(p.publicKey[:])),
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
-		publicKey:         secp256k1.Compress(derivedPubKey),
+		publicKey:         derivedPubKey.Compress(),
 	}
 	return &child, nil
 }

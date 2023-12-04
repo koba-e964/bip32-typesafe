@@ -1,18 +1,19 @@
-// Reference: https://github.com/openssh/openssh-portable/blob/V_9_0_P1/sc25519.c
 package secp256k1
 
+// Reference: https://github.com/openssh/openssh-portable/blob/V_9_0_P1/sc25519.c
 import (
 	"crypto/subtle"
 	"encoding/hex"
 )
 
+// Scalar represents an integer mod Order. Its zero value represents 0 mod Order.
 type Scalar [32]byte
 
 var nBytes, _ = hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141")
-var Order = Scalar(nBytes)
+var Order = [32]byte(nBytes) // The order of secp256k1, namely 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141.
 
-// (a + b) mod n
-// constant-time
+// SCAdd returns (a + b) mod Order.
+// It runs in constant-time.
 func SCAdd(a Scalar, b Scalar) Scalar {
 	var carry byte
 	for i := len(a) - 1; i >= 0; i-- {
@@ -25,7 +26,7 @@ func SCAdd(a Scalar, b Scalar) Scalar {
 	return a
 }
 
-// reduction mod n
+// reduction mod Order
 // constant-time
 func scReduce(a *Scalar) {
 	cmp := CompareBytes(*a, Order)
@@ -81,7 +82,13 @@ func subTwoBytes(a byte, b byte, borrow byte) (byte, byte) {
 	return byte(sum >> 8), byte(sum & 0xff)
 }
 
-// -1: lt, 0: eq, 1: gt
+// CompareBytes compares two 32-byte arrays in constant-time.
+//
+// The return value is one of {-1, 0, 1}.
+//
+//   - -1: a < b
+//   - 0: a = b
+//   - 1: a > b
 func CompareBytes(a [32]byte, b [32]byte) int {
 	result := 0
 	for i := 0; i < len(a); i++ {

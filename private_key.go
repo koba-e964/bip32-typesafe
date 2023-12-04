@@ -14,7 +14,7 @@ type PrivateKey struct {
 	parentFingerprint [4]byte
 	childNumber       [4]byte
 	chainCode         [32]byte
-	privateKey        [32]byte
+	privateKey        secp256k1.Scalar
 }
 
 func (p *PrivateKey) Depth() byte {
@@ -48,7 +48,7 @@ func (p *PrivateKey) GetPublicKey() *PublicKey {
 		parentFingerprint: p.parentFingerprint,
 		childNumber:       p.childNumber,
 		chainCode:         p.chainCode,
-		publicKey:         secp256k1.Compress(secp256k1.GEPoint(p.privateKey)),
+		publicKey:         secp256k1.GEPoint(p.privateKey).Compress(),
 	}
 	return &publicKey
 }
@@ -143,7 +143,7 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	if p.depth >= 255 {
 		return nil, ErrorTooDeepKey
 	}
-	pubPart := secp256k1.Compress(secp256k1.GEPoint(p.privateKey))
+	pubPart := secp256k1.GEPoint(p.privateKey).Compress()
 	keyData := [33]byte(append([]byte{0x00}, p.privateKey[:]...))
 	if childIdx < FirstHardenedChildIndex {
 		keyData = pubPart

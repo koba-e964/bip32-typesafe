@@ -7,7 +7,7 @@ import (
 )
 
 func TestSCAdd(t *testing.T) {
-	a := Order
+	a := Scalar(Order)
 	a[31] -= 1
 	b := a
 	b[31] -= 1

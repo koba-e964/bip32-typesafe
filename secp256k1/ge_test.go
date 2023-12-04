@@ -16,8 +16,8 @@ func TestGEAdd(t *testing.T) {
 func TestGEPoint0(t *testing.T) {
 	var two Scalar
 	two[31] = 2
-	expected := Compress(VartimePoint(two))
-	result := Compress(GEPoint(two))
+	expected := GEVartimePoint(two).Compress()
+	result := GEPoint(two).Compress()
 	assert.Equal(t, expected, result)
 }
 
@@ -30,7 +30,7 @@ func TestGEPoint1(t *testing.T) {
 func TestGEPoint2(t *testing.T) {
 	exp := Order
 	exp[31] += 1
-	expected := Compress(GEPoint(Scalar(one)))
-	result := Compress(GEPoint(exp))
+	expected := GEPoint(Scalar(one)).Compress()
+	result := GEPoint(exp).Compress()
 	assert.Equal(t, expected, result)
 }

@@ -1,6 +1,6 @@
-// Reference: https://github.com/openssh/openssh-portable/blob/V_9_0_P1/ge25519.c
 package secp256k1
 
+// Reference: https://github.com/openssh/openssh-portable/blob/V_9_0_P1/ge25519.c
 import (
 	"crypto/subtle"
 	"encoding/hex"
@@ -9,31 +9,42 @@ import (
 	btcutil "github.com/FactomProject/btcutilecc"
 )
 
+// ErrorInvalidPoint is returned when an invalid point was found. The reasons why a point is invalid include:
+//   - invalid header (neither 02 nor 03)
+//   - could not find the y coordinate
 var ErrorInvalidPoint = errors.New("invalid point on secp256k1")
 
+// Compressed is a compressed (33-byte, x-coordinate + y mod 2) representation of a point on secp256k1.
+// Its zero value is invalid. It cannot represent the infinity (zero element).
 type Compressed [33]byte
 
 var (
 	gxBytes, _    = hex.DecodeString("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
 	gyBytes, _    = hex.DecodeString("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8")
-	gx         FE = [32]byte(gxBytes)
-	gy         FE = [32]byte(gyBytes)
+	gx         fe = [32]byte(gxBytes)
+	gy         fe = [32]byte(gyBytes)
 )
 
-// Point retains a point in a Jacobian coordinate
+// Point retains a point in Jacobian coordinates.
+//
+// Two distinct representations can represent the same point,
+// so you cannot simply compare two Points with == to check if they are equal.
+// You need to first compress them into Compressed and then compare.
+//
+// Its zero value is invalid.
 type Point struct {
-	x FE
-	y FE
-	z FE
+	x fe
+	y fe
+	z fe
 }
 
-var zero, one FE
+var zero, one fe
 
 func init() {
 	one[31] = 1
 }
 
-func Uncompress(a Compressed) (*Point, error) {
+func (a Compressed) Uncompress() (*Point, error) {
 	x := [32]byte(a[1:])
 	// We are in error condition, this can be an early return
 	// assert a[0] == 2 or a[0] == 3
@@ -45,7 +56,7 @@ func Uncompress(a Compressed) (*Point, error) {
 		return nil, ErrorInvalidPoint
 	}
 	// y^2 = x^3 + 7
-	var seven FE
+	var seven fe
 	seven[31] = 7
 	xCube := feMul(x, x)
 	xCube = feMul(xCube, x)
@@ -57,7 +68,7 @@ func Uncompress(a Compressed) (*Point, error) {
 		return nil, ErrorInvalidPoint
 	}
 	// y != 0 always holds, so (-y) mod p = p - y always holds
-	negY := p
+	negY := P
 	inPlaceSubtract((*[32]byte)(&negY), y)
 	// Check if the sign is correct
 	diff := int((y[31] & 1) ^ (a[0] & 1))
@@ -67,7 +78,8 @@ func Uncompress(a Compressed) (*Point, error) {
 	return &Point{x: x, y: y, z: one}, nil
 }
 
-func Compress(p *Point) Compressed {
+// Compress returns the value in the compressed format. It runs in constant-time.
+func (p *Point) Compress() Compressed {
 	var result [33]byte
 	zInv := feInv(p.z)
 	z2 := feSquare(zInv)
@@ -79,6 +91,7 @@ func Compress(p *Point) Compressed {
 	return result
 }
 
+// GEAdd computes a + b. It runs in constant-time.
 func GEAdd(a *Point, b *Point) *Point {
 	sum1 := GEDouble(a)
 	sum2 := geAddDistinct(a, b)
@@ -88,6 +101,7 @@ func GEAdd(a *Point, b *Point) *Point {
 	return choicePoint(cond, sum1, sum2)
 }
 
+// GEDouble computes 2p. It runs in constant-time.
 func GEDouble(p *Point) *Point {
 	// https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
 	a := feSquare(p.x)
@@ -140,7 +154,9 @@ func geAddDistinct(a *Point, b *Point) *Point {
 	return choicePoint(aIsZero, b, choicePoint(bIsZero, a, p))
 }
 
-func VartimePoint(n Scalar) *Point {
+// GEVartimePoint computes n G where G is the base point.
+// It does not have a constant-time guarantee, but it is faster than GEPoint.
+func GEVartimePoint(n Scalar) *Point {
 	curve := btcutil.Secp256k1()
 	x, y := curve.ScalarBaseMult(n[:])
 	var xBytes, yBytes [32]byte
@@ -149,6 +165,7 @@ func VartimePoint(n Scalar) *Point {
 	return &Point{x: xBytes, y: yBytes, z: one}
 }
 
+// GEPoint computes n G where G is the base point. It runs in constant-time.
 func GEPoint(n Scalar) *Point {
 	current := &Point{x: gx, y: gy, z: one}
 	prod := &Point{x: one, y: one}
