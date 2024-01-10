@@ -13,8 +13,8 @@ type child struct {
 }
 
 type keyPair struct {
-	extPub   string // expected seralized public key
-	extPrv   string // expected seralized private key
+	extPub   string // expected serialized public key
+	extPrv   string // expected serialized private key
 	children []child
 }
 
