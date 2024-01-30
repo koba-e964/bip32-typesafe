@@ -34,3 +34,43 @@ func TestGEPoint2(t *testing.T) {
 	result := GEPoint(exp).Compress()
 	assert.Equal(t, expected, result)
 }
+
+func BenchmarkGEPoint_VariableTime_Short(b *testing.B) {
+	var two Scalar
+	two[31] = 2
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		GEVartimePoint(two)
+	}
+}
+
+func BenchmarkGEPoint_VariableTime_Long(b *testing.B) {
+	var k Scalar
+	for i := 0; i < len(k); i++ {
+		k[i] = 0xff
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		GEVartimePoint(k)
+	}
+}
+
+func BenchmarkGEPoint_ConstantTime_Short(b *testing.B) {
+	var two Scalar
+	two[31] = 2
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		GEPoint(two)
+	}
+}
+
+func BenchmarkGEPoint_ConstantTime_Long(b *testing.B) {
+	var k Scalar
+	for i := 0; i < len(k); i++ {
+		k[i] = 0xff
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		GEPoint(k)
+	}
+}
