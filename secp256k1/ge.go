@@ -86,7 +86,7 @@ func (p *Point) Compress() Compressed {
 	z3 := feMul(z2, zInv)
 	x := feMul(p.x, z2)
 	y := feMul(p.y, z3)
-	result[0] = byte(subtle.ConstantTimeSelect(int(y[31]&1), 0x03, 0x02))
+	result[0] = (y[31] & 1) | 0x02
 	copy(result[1:], x[:])
 	return result
 }
