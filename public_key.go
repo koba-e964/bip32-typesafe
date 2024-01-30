@@ -8,7 +8,7 @@ import (
 	"github.com/koba-e964/bip32-typesafe/secp256k1"
 )
 
-// A public key.
+// PublicKey is a public key.
 type PublicKey struct {
 	version           [4]byte // publicKeyVersion or testnetPublicKeyVersion
 	depth             byte
@@ -43,7 +43,7 @@ func (p *PublicKey) PublicKey() secp256k1.Compressed {
 	return p.publicKey
 }
 
-// B58Serialize returns the []byte representation of this PublicKey.
+// Serialize returns the []byte representation of this PublicKey.
 func (p *PublicKey) Serialize() [KeyLengthInBytes]byte {
 	var result [KeyLengthInBytes]byte
 

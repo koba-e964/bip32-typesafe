@@ -44,7 +44,7 @@ func VartimeDecode(encoded string, output []byte) {
 	tmp.FillBytes(output)
 }
 
-// VartimeDecode writes into output.
+// Decode writes into output.
 //
 // If the resulting integer doesn't fit in output,
 // the higher part will be truncated.
