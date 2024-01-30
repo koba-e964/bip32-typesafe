@@ -35,7 +35,7 @@ func scReduce(a *Scalar) {
 }
 
 // SCIsValid returns a < Order. It runs in constant-time.
-func SCIsValid(a fe) int {
+func SCIsValid(a Scalar) int {
 	cmp := CompareBytes([32]byte(a), Order)
 	return subtle.ConstantTimeEq(int32(cmp), -1)
 }
