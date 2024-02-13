@@ -79,6 +79,15 @@ func TestFEInv1(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func BenchmarkAdd_ConstantTime(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := fe(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feAdd(value, value)
+	}
+}
+
 func BenchmarkMul_ConstantTime(b *testing.B) {
 	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
 	value := fe(valueBytes)
@@ -139,5 +148,14 @@ func BenchmarkInv_VariableTime2(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		feVartimeInv(value)
+	}
+}
+
+func BenchmarkModSqrt_ConstantTime(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := fe(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feModSqrt(value)
 	}
 }
