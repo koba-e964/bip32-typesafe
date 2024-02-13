@@ -69,11 +69,12 @@ func feSquare(a fe) fe {
 	return feMul(a, a)
 }
 
-// feInv gets the inverse of a. It retuns 0 if `a == 0`.
+// feInv gets the inverse of a. It returns 0 if `a == 0`.
 //
 // This function is about 400x as slow as `feVartimeInv`.
 // If you don't need constant-time property, you should use `feVartimeInv` instead.
 func feInv(a fe) fe {
+	// 256 feSquare + 249 feMul
 	// ^(p-2)
 	exp := P
 	exp[31] -= 2
@@ -85,7 +86,7 @@ func feInv(a fe) fe {
 		if (exp[31-i/8] & (1 << (i % 8))) != 0 {
 			prod = feMul(prod, current)
 		}
-		current = feMul(current, current)
+		current = feSquare(current)
 	}
 	return prod
 }
