@@ -67,7 +67,7 @@ func feMul(a fe, b fe) fe {
 }
 
 // feVartimeMul returns (a * b) mod P.
-// It runs in constant-time.
+// This function does not have a constant-time guarantee.
 func feVartimeMul(a fe, b fe) fe {
 	aBig := big.NewInt(0).SetBytes(a[:])
 	bBig := big.NewInt(0).SetBytes(b[:])
