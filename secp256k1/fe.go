@@ -2,8 +2,10 @@ package secp256k1
 
 import (
 	"crypto/subtle"
+	"encoding/binary"
 	"encoding/hex"
 	"math/big"
+	"math/bits"
 )
 
 var pBytes, _ = hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F")
@@ -18,11 +20,23 @@ type fe [32]byte
 func feMul(a fe, b fe) fe {
 	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
 	// a, b are in big-endian, so indices in the original implementation must be reversed.
-	var t [63]uint32
-	for i := 0; i < 32; i++ {
-		for j := 0; j < 32; j++ {
-			t[i+j] += uint32(a[i]) * uint32(b[j])
+	var t [63]uint64
+	var a32, b32 [8]uint32
+	for i := 0; i < 8; i++ {
+		a32[i] = binary.BigEndian.Uint32(a[i*4 : i*4+4])
+		b32[i] = binary.BigEndian.Uint32(b[i*4 : i*4+4])
+	}
+	for i := 0; i < 8; i++ {
+		for j := 0; j < 8; j++ {
+			hi, lo := bits.Mul32(a32[i], b32[j])
+			t[4*(i+j)+6] += uint64(lo)
+			t[4*(i+j)+2] += uint64(hi)
 		}
+	}
+
+	for i := 62; i > 0; i-- {
+		t[i-1] += t[i] >> 8
+		t[i] &= 0xff
 	}
 	for i := 32; i < 63; i++ {
 		v := t[i-32]
@@ -71,7 +85,7 @@ func feSquare(a fe) fe {
 
 // feInv gets the inverse of a. It returns 0 if `a == 0`.
 //
-// This function is about 200x as slow as `feVartimeInv`.
+// This function is about 150x as slow as `feVartimeInv`.
 // If you don't need constant-time property, you should use `feVartimeInv` instead.
 func feInv(a fe) fe {
 	// 255 feSquare + 15 feMul
