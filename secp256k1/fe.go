@@ -20,7 +20,7 @@ type fe [32]byte
 func feMul(a fe, b fe) fe {
 	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
 	// a, b are in big-endian, so indices in the original implementation must be reversed.
-	var t [63]uint64
+	var t [16]uint64 // 16 * uint32
 	var a32, b32 [8]uint32
 	for i := 0; i < 8; i++ {
 		a32[i] = binary.BigEndian.Uint32(a[i*4 : i*4+4])
@@ -29,39 +29,38 @@ func feMul(a fe, b fe) fe {
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
 			hi, lo := bits.Mul32(a32[i], b32[j])
-			t[4*(i+j)+6] += uint64(lo)
-			t[4*(i+j)+2] += uint64(hi)
+			t[i+j+1] += uint64(lo)
+			t[i+j] += uint64(hi)
 		}
 	}
 
-	for i := 62; i > 0; i-- {
-		t[i-1] += t[i] >> 8
-		t[i] &= 0xff
+	for i := 15; i > 0; i-- {
+		t[i-1] += t[i] >> 32
+		t[i] &= 0xffff_ffff
 	}
-	for i := 32; i < 63; i++ {
-		v := t[i-32]
-		t[i-4] += v
-		t[i-1] += 3 * v
-		t[i] += 209 * v
+	for i := 8; i < 16; i++ {
+		v := t[i-8]
+		t[i-1] += v
+		t[i] += 977 * v
 	}
-	// now t[i] < 256 * (2 * 209 + 1)
+	// now t[i] < 2^32 * (2 * 977 + 1)
 	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L63-L81
+	// After the first reduction, the value < 2^256 + 977 * 2^225 + 977 * 2^32.
+	// Reducing once more will make the value < 2^256.
 	for rep := 0; rep < 2; rep++ {
-		v := t[31] >> 8
-		t[31] &= 0xff
-		t[58] += v
-		t[61] += 3 * v
-		t[62] += 209 * v
+		v := t[8] >> 32
+		t[8] &= 0xffff_ffff
+		t[14] += v
+		t[15] += 977 * v
 
-		for i := 62; i >= 32; i-- {
-			u := t[i] >> 8
-			t[i-1] += u
-			t[i] &= 0xff
+		for i := 15; i > 8; i-- {
+			t[i-1] += t[i] >> 32
+			t[i] &= 0xffff_ffff
 		}
 	}
 	sum := fe{}
-	for i := 0; i < 32; i++ {
-		sum[i] = byte(t[i+31])
+	for i := 0; i < 8; i++ {
+		binary.BigEndian.PutUint32(sum[i*4:i*4+4], uint32(t[i+8]))
 	}
 	feReduce(&sum)
 	return sum
@@ -85,7 +84,7 @@ func feSquare(a fe) fe {
 
 // feInv gets the inverse of a. It returns 0 if `a == 0`.
 //
-// This function is about 150x as slow as `feVartimeInv`.
+// This function is about 80x as slow as `feVartimeInv`.
 // If you don't need constant-time property, you should use `feVartimeInv` instead.
 func feInv(a fe) fe {
 	// 255 feSquare + 15 feMul
