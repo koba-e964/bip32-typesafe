@@ -40,6 +40,13 @@ func TestSub2(t *testing.T) {
 	assert.Equal(t, *new(fe), result)
 }
 
+func TestSub3(t *testing.T) {
+	var two fe
+	two[31] = 2
+	result := feSub(two, two)
+	assert.Equal(t, zero, result)
+}
+
 func TestFEMul0(t *testing.T) {
 	var value fe
 	value[31] = 2
@@ -90,7 +97,7 @@ func BenchmarkMul_VariableTime(b *testing.B) {
 	}
 }
 
-func BenchmarkInv_ConstantTime(b *testing.B) {
+func BenchmarkInv_ConstantTime0(b *testing.B) {
 	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
 	value := fe(valueBytes)
 	b.ResetTimer()
@@ -99,8 +106,35 @@ func BenchmarkInv_ConstantTime(b *testing.B) {
 	}
 }
 
-func BenchmarkInv_VariableTime(b *testing.B) {
+func BenchmarkInv_ConstantTime1(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("0102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f1f")
+	value := fe(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feInv(value)
+	}
+}
+
+func BenchmarkInv_VariableTime0(b *testing.B) {
 	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := fe(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feVartimeInv(value)
+	}
+}
+
+func BenchmarkInv_VariableTime1(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("0102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f1f")
+	value := fe(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feVartimeInv(value)
+	}
+}
+
+func BenchmarkInv_VariableTime2(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("0102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f20")
 	value := fe(valueBytes)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
