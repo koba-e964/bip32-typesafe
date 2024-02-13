@@ -71,24 +71,92 @@ func feSquare(a fe) fe {
 
 // feInv gets the inverse of a. It returns 0 if `a == 0`.
 //
-// This function is about 400x as slow as `feVartimeInv`.
+// This function is about 200x as slow as `feVartimeInv`.
 // If you don't need constant-time property, you should use `feVartimeInv` instead.
 func feInv(a fe) fe {
-	// 256 feSquare + 249 feMul
+	// 255 feSquare + 15 feMul
 	// ^(p-2)
-	exp := P
-	exp[31] -= 2
-	var prod fe
-	prod[31] = 1
-	current := a
-	for i := 0; i < 256; i++ {
-		// It's totally fine to branch with exp[_] because it's public.
-		if (exp[31-i/8] & (1 << (i % 8))) != 0 {
-			prod = feMul(prod, current)
+	// Employing technique in https://github.com/bitcoin-core/secp256k1/blob/v0.4.1/src/field_impl.h#L33-L132
+	// p-2 = 2^256 - 2^32 - 979 = c_223 * 2^33 + c_22 * 2^10 + c_1 * 2^5 + c_2 * 2^2 + 1
+	// where c_i = 11...11 (i times) = 2^i - 1
+	// The binary representation of p-2 has 5 blocks with lengths 223, 22, 1, 2, 1.
+	// We use the following addition chain:
+	// [1], [2], 3, 6, 9, 11, [22], 44, 88, 176, 220, [223]
+	var x1, x2, x3, x22, x223 fe
+	x1 = a
+	x2 = feMul(feSquare(x1), x1)
+	// 20 feSquare + 5 feMul
+	{
+		x3 = feMul(feSquare(x2), x1)
+		x6 := x3
+		for i := 0; i < 3; i++ {
+			x6 = feSquare(x6)
 		}
-		current = feSquare(current)
+		x6 = feMul(x6, x3)
+		x9 := x6
+		for i := 0; i < 3; i++ {
+			x9 = feSquare(x9)
+		}
+		x9 = feMul(x9, x3)
+		x11 := x9
+		for i := 0; i < 2; i++ {
+			x11 = feSquare(x11)
+		}
+		x11 = feMul(x11, x2)
+		x22 = x11
+		for i := 0; i < 11; i++ {
+			x22 = feSquare(x22)
+		}
+		x22 = feMul(x22, x11)
 	}
-	return prod
+	// 201 feSquare + 5 feMul
+	{
+		x44 := x22
+		for i := 0; i < 22; i++ {
+			x44 = feSquare(x44)
+		}
+		x44 = feMul(x44, x22)
+		x88 := x44
+		for i := 0; i < 44; i++ {
+			x88 = feSquare(x88)
+		}
+		x88 = feMul(x88, x44)
+		x176 := x88
+		for i := 0; i < 88; i++ {
+			x176 = feSquare(x176)
+		}
+		x176 = feMul(x176, x88)
+		x220 := x176
+		for i := 0; i < 44; i++ {
+			x220 = feSquare(x220)
+		}
+		x220 = feMul(x220, x44)
+		x223 = x220
+		for i := 0; i < 3; i++ {
+			x223 = feSquare(x223)
+		}
+		x223 = feMul(x223, x3)
+	}
+	// 33 feSquare + 4 feMul
+	{
+		result := x223
+		for i := 0; i < 23; i++ {
+			result = feSquare(result)
+		}
+		result = feMul(result, x22)
+		for i := 0; i < 5; i++ {
+			result = feSquare(result)
+		}
+		result = feMul(result, x1)
+		for i := 0; i < 3; i++ {
+			result = feSquare(result)
+		}
+		result = feMul(result, x2)
+		result = feSquare(result)
+		result = feSquare(result)
+		result = feMul(result, x1)
+		return result
+	}
 }
 
 func feVartimeInv(a fe) fe {
