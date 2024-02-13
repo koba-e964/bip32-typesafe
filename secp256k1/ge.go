@@ -39,9 +39,14 @@ type Point struct {
 }
 
 var zero, one fe
+var table [256]Point // table[i] = 2^i * G
 
 func init() {
 	one[31] = 1
+	table[0] = Point{x: gx, y: gy, z: one}
+	for i := 1; i < 256; i++ {
+		table[i] = *GEDouble(&table[i-1])
+	}
 }
 
 func (a Compressed) Uncompress() (*Point, error) {
@@ -167,13 +172,11 @@ func GEVartimePoint(n Scalar) *Point {
 
 // GEPoint computes n G where G is the base point. It runs in constant-time.
 func GEPoint(n Scalar) *Point {
-	current := &Point{x: gx, y: gy, z: one}
 	prod := &Point{x: one, y: one}
 	for i := 0; i < 256; i++ {
-		prodCurrent := GEAdd(prod, current)
+		prodCurrent := GEAdd(prod, &table[i])
 		cond := int(n[31-i/8]>>(i%8)) & 1
 		prod = choicePoint(cond, prodCurrent, prod)
-		current = GEAdd(current, current)
 	}
 	return prod
 }
