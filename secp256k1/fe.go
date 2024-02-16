@@ -34,6 +34,43 @@ func feMul(a fe, b fe) fe {
 		}
 	}
 
+	return mulReduce(t)
+}
+
+// feVartimeMul returns (a * b) mod P.
+// This function does not have a constant-time guarantee.
+func feVartimeMul(a fe, b fe) fe {
+	aBig := big.NewInt(0).SetBytes(a[:])
+	bBig := big.NewInt(0).SetBytes(b[:])
+	aBig.Mul(aBig, bBig)
+	aBig.Rem(aBig, pBig)
+	var result fe
+	aBig.FillBytes(result[:])
+	return result
+}
+
+func feSquare(a fe) fe {
+	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
+	// a, b are in big-endian, so indices in the original implementation must be reversed.
+	var t [16]uint64 // 16 * uint32
+	var a32 [8]uint32
+	for i := 0; i < 8; i++ {
+		a32[i] = binary.BigEndian.Uint32(a[i*4 : i*4+4])
+	}
+	for i := 0; i < 8; i++ {
+		hi, lo := bits.Mul32(a32[i], a32[i])
+		t[i+i+1] += uint64(lo)
+		t[i+i] += uint64(hi)
+		for j := 0; j < i; j++ {
+			hi, lo := bits.Mul32(a32[i], a32[j])
+			t[i+j+1] += uint64(lo) * 2
+			t[i+j] += uint64(hi) * 2
+		}
+	}
+	return mulReduce(t)
+}
+
+func mulReduce(t [16]uint64) fe {
 	for i := 15; i > 0; i-- {
 		t[i-1] += t[i] >> 32
 		t[i] &= 0xffff_ffff
@@ -64,22 +101,6 @@ func feMul(a fe, b fe) fe {
 	}
 	feReduce(&sum)
 	return sum
-}
-
-// feVartimeMul returns (a * b) mod P.
-// This function does not have a constant-time guarantee.
-func feVartimeMul(a fe, b fe) fe {
-	aBig := big.NewInt(0).SetBytes(a[:])
-	bBig := big.NewInt(0).SetBytes(b[:])
-	aBig.Mul(aBig, bBig)
-	aBig.Rem(aBig, pBig)
-	var result fe
-	aBig.FillBytes(result[:])
-	return result
-}
-
-func feSquare(a fe) fe {
-	return feMul(a, a)
 }
 
 // feMul21 returns (a * 21) mod P.
@@ -113,7 +134,7 @@ func feMul21(a fe) fe {
 
 // feInv gets the inverse of a. It returns 0 if `a == 0`.
 //
-// This function is about 80x as slow as `feVartimeInv`.
+// This function is about 70x as slow as `feVartimeInv`.
 // If you don't need constant-time property, you should use `feVartimeInv` instead.
 func feInv(a fe) fe {
 	// 255 feSquare + 15 feMul
