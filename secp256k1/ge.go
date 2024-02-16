@@ -25,14 +25,14 @@ var (
 	gy         fe = [32]byte(gyBytes)
 )
 
-// Point retains a point in Jacobian coordinates.
+// Point retains a point in projective coordinates.
 //
 // Two distinct representations can represent the same point,
 // so you cannot simply compare two Points with == to check if they are equal.
 // You need to first compress them into Compressed and then compare.
 //
 // Its zero value is invalid.
-type Point = JacobianPoint
+type Point = ProjPoint
 
 // JacobianPoint retains a point in Jacobian coordinates.
 //
@@ -69,7 +69,7 @@ func init() {
 	table[0] = JacobianPoint{x: gx, y: gy, z: one}
 	projTable[0] = ProjPoint{x: gx, y: gy, z: one}
 	for i := 1; i < 256; i++ {
-		table[i] = *GEDouble(&table[i-1])
+		table[i] = *GEJacobianDouble(&table[i-1])
 		projTable[i] = *GEProjAdd(&projTable[i-1], &projTable[i-1])
 		projTable[i].assertValid()
 		x1 := feMul(table[i].x, feInv(feSquare(table[i].z)))
@@ -163,7 +163,7 @@ func (p *ProjPoint) assertValid() {
 
 // GEAdd computes a + b. It runs in constant-time.
 func GEAdd(a *Point, b *Point) *Point {
-	return GEJacobianAdd(a, b)
+	return GEProjAdd(a, b)
 }
 
 // GEJacobianAdd computes a + b. It runs in constant-time.
@@ -218,7 +218,7 @@ func GEProjAdd(a *ProjPoint, b *ProjPoint) *ProjPoint {
 
 // GEDouble computes 2p. It runs in constant-time.
 func GEDouble(p *Point) *Point {
-	return GEJacobianDouble(p)
+	return GEProjDouble(p)
 }
 
 // GEJacobianDouble computes 2p. It runs in constant-time.
@@ -305,7 +305,7 @@ func GEVartimeProjPoint(n Scalar) *ProjPoint {
 
 // GEPoint computes n G where G is the base point. It runs in constant-time.
 func GEPoint(n Scalar) *Point {
-	return GEJacobianPoint(n)
+	return GEProjPoint(n)
 }
 
 func GEJacobianPoint(n Scalar) *JacobianPoint {
