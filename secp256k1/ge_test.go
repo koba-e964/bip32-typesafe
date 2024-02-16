@@ -14,11 +14,18 @@ func suppress[T any](a T, err error) T {
 	return a
 }
 
-func TestGEAdd(t *testing.T) {
-	base := &Point{x: gx, y: gy, z: one}
-	zero := &Point{x: one, y: one}
-	result := GEAdd(base, zero)
-	assert.Equal(t, base, result)
+func TestGEJacobianAdd(t *testing.T) {
+	base := &JacobianPoint{x: gx, y: gy, z: one}
+	zero := &JacobianPoint{x: one, y: one}
+	result := GEJacobianAdd(base, zero)
+	assert.Equal(t, base.Compress(), result.Compress())
+}
+
+func TestGEProjAdd(t *testing.T) {
+	base := &ProjPoint{x: gx, y: gy, z: one}
+	zero := &ProjPoint{y: one}
+	result := GEProjAdd(base, zero)
+	assert.Equal(t, base.Compress(), result.Compress())
 }
 
 func TestGEPoint0(t *testing.T) {
@@ -64,42 +71,51 @@ func TestGEPoint3(t *testing.T) {
 	}
 }
 
-func BenchmarkGEPoint_VariableTime_Short(b *testing.B) {
+func BenchmarkGEJacobianPoint_VariableTime_Short(b *testing.B) {
 	var two Scalar
 	two[31] = 2
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		GEVartimePoint(two)
+		GEVartimeJacobianPoint(two)
 	}
 }
 
-func BenchmarkGEPoint_VariableTime_Long(b *testing.B) {
+func BenchmarkGEJacobianPoint_VariableTime_Long(b *testing.B) {
 	var k Scalar
 	for i := 0; i < len(k); i++ {
 		k[i] = 0xff
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		GEVartimePoint(k)
+		GEVartimeJacobianPoint(k)
 	}
 }
 
-func BenchmarkGEPoint_ConstantTime_Short(b *testing.B) {
+func BenchmarkGEJacobianPoint_ConstantTime_Short(b *testing.B) {
 	var two Scalar
 	two[31] = 2
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		GEPoint(two)
+		GEJacobianPoint(two)
 	}
 }
 
-func BenchmarkGEPoint_ConstantTime_Long(b *testing.B) {
+func BenchmarkGEJacobianPoint_ConstantTime_Long(b *testing.B) {
 	var k Scalar
 	for i := 0; i < len(k); i++ {
 		k[i] = 0xff
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		GEPoint(k)
+		GEJacobianPoint(k)
+	}
+}
+
+func BenchmarkGEProjPoint_ConstantTime_Short(b *testing.B) {
+	var two Scalar
+	two[31] = 2
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		GEProjPoint(two)
 	}
 }

@@ -82,6 +82,35 @@ func feSquare(a fe) fe {
 	return feMul(a, a)
 }
 
+// feMul21 returns (a * 21) mod P.
+// It runs in constant-time.
+func feMul21(a fe) fe {
+	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
+	// a, b are in big-endian, so indices in the original implementation must be reversed.
+	var t [8]uint64
+	for i := 0; i < 8; i++ {
+		t[i] += uint64(binary.BigEndian.Uint32(a[i*4:i*4+4])) * 21
+	}
+
+	for rep := 0; rep < 2; rep++ {
+		v := t[0] >> 32
+		t[0] &= 0xffff_ffff
+		t[6] += v
+		t[7] += 977 * v
+
+		for i := 7; i > 0; i-- {
+			t[i-1] += t[i] >> 32
+			t[i] &= 0xffff_ffff
+		}
+	}
+	sum := fe{}
+	for i := 0; i < 8; i++ {
+		binary.BigEndian.PutUint32(sum[i*4:i*4+4], uint32(t[i]))
+	}
+	feReduce(&sum)
+	return sum
+}
+
 // feInv gets the inverse of a. It returns 0 if `a == 0`.
 //
 // This function is about 80x as slow as `feVartimeInv`.

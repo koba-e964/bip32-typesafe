@@ -63,6 +63,24 @@ func TestFEMul1(t *testing.T) {
 	assert.Equal(t, expected, actual)
 }
 
+func TestFESquare0(t *testing.T) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := fe(valueBytes)
+	expected := feVartimeMul(value, value)
+	actual := feSquare(value)
+	assert.Equal(t, expected, actual)
+}
+
+func TestFEMul21_0(t *testing.T) {
+	valueBytes, _ := hex.DecodeString("102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f123")
+	value := fe(valueBytes)
+	actual := feMul21(value)
+	twentyOne := fe{}
+	twentyOne[31] = 21
+	expected := feVartimeMul(value, twentyOne)
+	assert.Equal(t, expected, actual)
+}
+
 func TestFEInv0(t *testing.T) {
 	var value fe
 	value[31] = 2
@@ -103,6 +121,24 @@ func BenchmarkMul_VariableTime(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		feVartimeMul(value, value)
+	}
+}
+
+func BenchmarkSquare_ConstantTime(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := fe(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feSquare(value)
+	}
+}
+
+func BenchmarkMul21_ConstantTime(b *testing.B) {
+	valueBytes, _ := hex.DecodeString("000102030405060708090a0b0c0d0e0f000102030405060708090a0b0c0d0e0f")
+	value := fe(valueBytes)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		feMul21(value)
 	}
 }
 
