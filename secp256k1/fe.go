@@ -10,10 +10,28 @@ import (
 
 var pBytes, _ = hex.DecodeString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F")
 var P = [32]byte(pBytes) // P is the order of the defining field F_p, namely 2^256 - 2^32 - 977.
+var pfe = feFromBytes([32]byte(pBytes))
 var pBig = big.NewInt(0).SetBytes(pBytes)
 
 // fe represents an integer mod P. Its zero value represents 0 mod P.
-type fe [32]byte
+type fe [8]uint32
+
+// feFromBytes returns a fe from a big-endian byte slice.
+func feFromBytes(b [32]byte) fe {
+	var result fe
+	for i := 0; i < 8; i++ {
+		result[i] = binary.BigEndian.Uint32(b[i*4 : i*4+4])
+	}
+	return result
+}
+
+func (f fe) Bytes() [32]byte {
+	var result [32]byte
+	for i := 0; i < 8; i++ {
+		binary.BigEndian.PutUint32(result[i*4:i*4+4], f[i])
+	}
+	return result
+}
 
 // feMul returns (a * b) mod P.
 // It runs in constant-time.
@@ -21,14 +39,9 @@ func feMul(a fe, b fe) fe {
 	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
 	// a, b are in big-endian, so indices in the original implementation must be reversed.
 	var t [16]uint64 // 16 * uint32
-	var a32, b32 [8]uint32
-	for i := 0; i < 8; i++ {
-		a32[i] = binary.BigEndian.Uint32(a[i*4 : i*4+4])
-		b32[i] = binary.BigEndian.Uint32(b[i*4 : i*4+4])
-	}
 	for i := 0; i < 8; i++ {
 		for j := 0; j < 8; j++ {
-			hi, lo := bits.Mul32(a32[i], b32[j])
+			hi, lo := bits.Mul32(a[i], b[j])
 			t[i+j+1] += uint64(lo)
 			t[i+j] += uint64(hi)
 		}
@@ -40,12 +53,15 @@ func feMul(a fe, b fe) fe {
 // feVartimeMul returns (a * b) mod P.
 // This function does not have a constant-time guarantee.
 func feVartimeMul(a fe, b fe) fe {
-	aBig := big.NewInt(0).SetBytes(a[:])
-	bBig := big.NewInt(0).SetBytes(b[:])
+	aBytes := a.Bytes()
+	bBytes := b.Bytes()
+	aBig := big.NewInt(0).SetBytes(aBytes[:])
+	bBig := big.NewInt(0).SetBytes(bBytes[:])
 	aBig.Mul(aBig, bBig)
 	aBig.Rem(aBig, pBig)
-	var result fe
-	aBig.FillBytes(result[:])
+	var tmp [32]byte
+	aBig.FillBytes(tmp[:])
+	var result fe = feFromBytes(tmp)
 	return result
 }
 
@@ -53,16 +69,12 @@ func feSquare(a fe) fe {
 	// Using technique used in https://github.com/openssh/openssh-portable/blob/V_9_1_P1/fe25519.c#L196-L211
 	// a, b are in big-endian, so indices in the original implementation must be reversed.
 	var t [16]uint64 // 16 * uint32
-	var a32 [8]uint32
 	for i := 0; i < 8; i++ {
-		a32[i] = binary.BigEndian.Uint32(a[i*4 : i*4+4])
-	}
-	for i := 0; i < 8; i++ {
-		hi, lo := bits.Mul32(a32[i], a32[i])
+		hi, lo := bits.Mul32(a[i], a[i])
 		t[i+i+1] += uint64(lo)
 		t[i+i] += uint64(hi)
 		for j := 0; j < i; j++ {
-			hi, lo := bits.Mul32(a32[i], a32[j])
+			hi, lo := bits.Mul32(a[i], a[j])
 			t[i+j+1] += uint64(lo) * 2
 			t[i+j] += uint64(hi) * 2
 		}
@@ -97,7 +109,7 @@ func mulReduce(t [16]uint64) fe {
 	}
 	sum := fe{}
 	for i := 0; i < 8; i++ {
-		binary.BigEndian.PutUint32(sum[i*4:i*4+4], uint32(t[i+8]))
+		sum[i] = uint32(t[i+8])
 	}
 	feReduce(&sum)
 	return sum
@@ -110,7 +122,7 @@ func feMul21(a fe) fe {
 	// a, b are in big-endian, so indices in the original implementation must be reversed.
 	var t [8]uint64
 	for i := 0; i < 8; i++ {
-		t[i] += uint64(binary.BigEndian.Uint32(a[i*4:i*4+4])) * 21
+		t[i] += uint64(a[i]) * 21
 	}
 
 	for rep := 0; rep < 2; rep++ {
@@ -126,7 +138,7 @@ func feMul21(a fe) fe {
 	}
 	sum := fe{}
 	for i := 0; i < 8; i++ {
-		binary.BigEndian.PutUint32(sum[i*4:i*4+4], uint32(t[i]))
+		sum[i] = uint32(t[i])
 	}
 	feReduce(&sum)
 	return sum
@@ -134,7 +146,7 @@ func feMul21(a fe) fe {
 
 // feInv gets the inverse of a. It returns 0 if `a == 0`.
 //
-// This function is about 70x as slow as `feVartimeInv`.
+// This function is about 40x as slow as `feVartimeInv`.
 // If you don't need constant-time property, you should use `feVartimeInv` instead.
 func feInv(a fe) fe {
 	// 255 feSquare + 15 feMul
@@ -223,10 +235,12 @@ func feInv(a fe) fe {
 }
 
 func feVartimeInv(a fe) fe {
-	aBig := big.NewInt(0).SetBytes(a[:])
+	aBytes := a.Bytes()
+	aBig := big.NewInt(0).SetBytes(aBytes[:])
 	aBig.ModInverse(aBig, pBig)
-	var result fe
-	aBig.FillBytes(result[:])
+	var tmp [32]byte
+	aBig.FillBytes(tmp[:])
+	var result fe = feFromBytes(tmp)
 	return result
 }
 
@@ -234,13 +248,13 @@ func feVartimeInv(a fe) fe {
 //
 // constant-time
 func feAdd(a fe, b fe) fe {
-	var carry byte
+	var carry uint32
 	for i := len(a) - 1; i >= 0; i-- {
-		thisCarry, sum := sumTwoBytes(a[i], b[i], carry)
+		sum, thisCarry := bits.Add32(a[i], b[i], carry)
 		a[i] = sum
 		carry = thisCarry
 	}
-	conditionallySubtract(int(carry), (*[32]byte)(&a), P)
+	conditionallySubtract32(int(carry), (*[8]uint32)(&a), pfe)
 	feReduce(&a)
 	return a
 }
@@ -249,26 +263,26 @@ func feAdd(a fe, b fe) fe {
 //
 // constant-time
 func feSub(a fe, b fe) fe {
-	var borrow byte = 1
+	var borrow uint32 = 0
 	for i := len(a) - 1; i >= 0; i-- {
-		thisBorrow, diff := subTwoBytes(a[i], b[i], borrow)
+		diff, thisBorrow := bits.Sub32(a[i], b[i], borrow)
 		a[i] = diff
 		borrow = thisBorrow
 	}
-	conditionallyAdd(int(borrow^1), (*[32]byte)(&a), P)
+	conditionallyAdd32(int(borrow), (*[8]uint32)(&a), pfe)
 	return a
 }
 
 func feModSqrt(a fe) fe {
 	// ^((p+1)/4)
-	exp := P
-	exp[31] += 1
+	exp := pfe
+	exp[7] += 1
 	var prod fe
-	prod[31] = 1
+	prod[7] = 1
 	current := a
 	for i := 2; i < 256; i++ {
 		// It's totally fine to branch with exp[_] because it's public.
-		if (exp[31-i/8] & (1 << (i % 8))) != 0 {
+		if (exp[7-i/32] & (1 << (i % 32))) != 0 {
 			prod = feMul(prod, current)
 		}
 		current = feMul(current, current)
@@ -279,13 +293,13 @@ func feModSqrt(a fe) fe {
 // reduction mod p
 // constant-time
 func feReduce(a *fe) {
-	cmp := CompareBytes([32]byte(*a), P)
+	cmp := CompareUint32s([8]uint32(*a), pfe)
 	isGe := subtle.ConstantTimeLessOrEq(0, cmp)
-	conditionallySubtract(isGe, (*[32]byte)(a), P)
+	conditionallySubtract32(isGe, (*[8]uint32)(a), pfe)
 }
 
 // Returns a < p, runs in constant-time.
 func feIsValid(a fe) int {
-	cmp := CompareBytes([32]byte(a), P)
+	cmp := CompareUint32s([8]uint32(a), pfe)
 	return subtle.ConstantTimeEq(int32(cmp), -1)
 }

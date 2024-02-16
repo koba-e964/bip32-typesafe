@@ -45,7 +45,9 @@ func TestGEPoint1(t *testing.T) {
 func TestGEPoint2(t *testing.T) {
 	exp := Order
 	exp[31] += 1
-	expected := GEPoint(Scalar(one)).Compress()
+	one := Scalar{}
+	one[31] = 1
+	expected := GEPoint(one).Compress()
 	result := GEPoint(exp).Compress()
 	assert.Equal(t, expected, result)
 }

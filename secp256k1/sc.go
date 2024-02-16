@@ -4,6 +4,7 @@ package secp256k1
 import (
 	"crypto/subtle"
 	"encoding/hex"
+	"math/bits"
 )
 
 // Scalar represents an integer mod Order. Its zero value represents 0 mod Order.
@@ -52,18 +53,26 @@ func conditionallySubtract(cond int, a *[32]byte, n [32]byte) {
 
 // if cond == 1, a -= n. otherwise, a is unchanged.
 // if cond is another value, the result is undefined.
-func conditionallyAdd(cond int, a *[32]byte, n [32]byte) {
+func conditionallySubtract32(cond int, a *[8]uint32, n [8]uint32) {
 	sub := *a
-	inPlaceAdd(&sub, n)
+	inPlaceSubtract32(&sub, n)
 	for i := 0; i < len(a); i++ {
-		a[i] = byte(subtle.ConstantTimeSelect(cond, int(sub[i]), int(a[i])))
+		a[i] = uint32(subtle.ConstantTimeSelect(cond, int(sub[i]), int(a[i])))
 	}
 }
 
-func inPlaceAdd(a *[32]byte, b [32]byte) {
-	var carry byte
+func conditionallyAdd32(cond int, a *[8]uint32, n [8]uint32) {
+	sub := *a
+	inPlaceAdd32(&sub, n)
+	for i := 0; i < len(a); i++ {
+		a[i] = uint32(subtle.ConstantTimeSelect(cond, int(sub[i]), int(a[i])))
+	}
+}
+
+func inPlaceAdd32(a *[8]uint32, b [8]uint32) {
+	var carry uint32
 	for i := len(a) - 1; i >= 0; i-- {
-		thisCarry, sum := sumTwoBytes(a[i], b[i], carry)
+		sum, thisCarry := bits.Add32(a[i], b[i], carry)
 		a[i] = sum
 		carry = thisCarry
 	}
@@ -73,6 +82,15 @@ func inPlaceSubtract(a *[32]byte, b [32]byte) {
 	var borrow byte = 1
 	for i := len(a) - 1; i >= 0; i-- {
 		thisBorrow, diff := subTwoBytes(a[i], b[i], borrow)
+		a[i] = diff
+		borrow = thisBorrow
+	}
+}
+
+func inPlaceSubtract32(a *[8]uint32, b [8]uint32) {
+	var borrow uint32 = 0
+	for i := len(a) - 1; i >= 0; i-- {
+		diff, thisBorrow := bits.Sub32(a[i], b[i], borrow)
 		a[i] = diff
 		borrow = thisBorrow
 	}
@@ -100,6 +118,18 @@ func CompareBytes(a [32]byte, b [32]byte) int {
 	for i := 0; i < len(a); i++ {
 		le := subtle.ConstantTimeLessOrEq(int(a[i]), int(b[i]))
 		eq := subtle.ConstantTimeByteEq(a[i], b[i])
+		now := subtle.ConstantTimeSelect(le, eq-1, 1)
+		result = subtle.ConstantTimeSelect(result*result, result, now)
+	}
+	return result
+}
+
+func CompareUint32s(a [8]uint32, b [8]uint32) int {
+	result := 0
+	for i := 0; i < len(a); i++ {
+		_, borrow := bits.Sub32(b[i], a[i], 0)
+		le := 1 - int(borrow)
+		eq := subtle.ConstantTimeEq(int32(a[i]), int32(b[i]))
 		now := subtle.ConstantTimeSelect(le, eq-1, 1)
 		result = subtle.ConstantTimeSelect(result*result, result, now)
 	}

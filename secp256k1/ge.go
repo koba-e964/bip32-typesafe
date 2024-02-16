@@ -21,8 +21,8 @@ type Compressed [33]byte
 var (
 	gxBytes, _    = hex.DecodeString("79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798")
 	gyBytes, _    = hex.DecodeString("483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8")
-	gx         fe = [32]byte(gxBytes)
-	gy         fe = [32]byte(gyBytes)
+	gx         fe = feFromBytes([32]byte(gxBytes))
+	gy         fe = feFromBytes([32]byte(gyBytes))
 )
 
 // Point retains a point in projective coordinates.
@@ -65,18 +65,13 @@ var table [256]JacobianPoint // table[i] = 2^i * G
 var projTable [256]ProjPoint // projTable[i] = 2^i * G
 
 func init() {
-	one[31] = 1
+	one[7] = 1
 	table[0] = JacobianPoint{x: gx, y: gy, z: one}
 	projTable[0] = ProjPoint{x: gx, y: gy, z: one}
 	for i := 1; i < 256; i++ {
 		table[i] = *GEJacobianDouble(&table[i-1])
 		projTable[i] = *GEProjAdd(&projTable[i-1], &projTable[i-1])
 		projTable[i].assertValid()
-		x1 := feMul(table[i].x, feInv(feSquare(table[i].z)))
-		x2 := feMul(projTable[i].x, feInv(projTable[i].z))
-		if subtle.ConstantTimeCompare(x1[:], x2[:]) != 1 {
-			panic("discrepancy")
-		}
 	}
 }
 
@@ -87,7 +82,7 @@ func (a Compressed) Uncompress() (*Point, error) {
 }
 
 func (a Compressed) UncompressJacobian() (*JacobianPoint, error) {
-	x := [32]byte(a[1:])
+	x := feFromBytes([32]byte(a[1:]))
 	// We are in error condition, this can be an early return
 	// assert a[0] == 2 or a[0] == 3
 	if (a[0] & 0xfe) != 2 {
@@ -99,23 +94,23 @@ func (a Compressed) UncompressJacobian() (*JacobianPoint, error) {
 	}
 	// y^2 = x^3 + 7
 	var seven fe
-	seven[31] = 7
+	seven[7] = 7
 	xCube := feMul(x, x)
 	xCube = feMul(xCube, x)
 	ySquare := feAdd(xCube, seven)
 	y := feModSqrt(ySquare)
 	// checks if ySquare was a quadratic residue by computing y * y == ySquare
 	ySquare2 := feMul(y, y)
-	if subtle.ConstantTimeCompare(ySquare[:], ySquare2[:]) != 1 {
+	if CompareUint32s(ySquare2, ySquare) != 0 {
 		return nil, ErrorInvalidPoint
 	}
 	// y != 0 always holds, so (-y) mod p = p - y always holds
-	negY := P
-	inPlaceSubtract((*[32]byte)(&negY), y)
+	negY := pfe
+	inPlaceSubtract32((*[8]uint32)(&negY), y)
 	// Check if the sign is correct
-	diff := int((y[31] & 1) ^ (a[0] & 1))
+	diff := int((y[7] & 1)) ^ int((a[0] & 1))
 	for i := 0; i < len(y); i++ {
-		y[i] = byte(subtle.ConstantTimeSelect(diff, int(negY[i]), int(y[i])))
+		y[i] = uint32(subtle.ConstantTimeSelect(diff, int(negY[i]), int(y[i])))
 	}
 	return &JacobianPoint{x: x, y: y, z: one}, nil
 }
@@ -134,8 +129,9 @@ func (p *JacobianPoint) Compress() Compressed {
 	z3 := feMul(z2, zInv)
 	x := feMul(p.x, z2)
 	y := feMul(p.y, z3)
-	result[0] = (y[31] & 1) | 0x02
-	copy(result[1:], x[:])
+	result[0] = byte(y[7]&1) | 0x02
+	xBytes := x.Bytes()
+	copy(result[1:], xBytes[:])
 	return result
 }
 
@@ -145,8 +141,9 @@ func (p *ProjPoint) Compress() Compressed {
 	zInv := feInv(p.z)
 	x := feMul(p.x, zInv)
 	y := feMul(p.y, zInv)
-	result[0] = (y[31] & 1) | 0x02
-	copy(result[1:], x[:])
+	result[0] = byte(y[7]&1) | 0x02
+	xBytes := x.Bytes()
+	copy(result[1:], xBytes[:])
 	return result
 }
 
@@ -154,9 +151,9 @@ func (p *ProjPoint) assertValid() {
 	tmp := feMul(feMul(p.y, p.y), p.z)
 	tmp = feSub(tmp, feMul(feMul(p.x, p.x), p.x))
 	var bconst fe
-	bconst[31] = 7
+	bconst[7] = 7
 	tmp = feSub(tmp, feMul(feMul(p.z, p.z), feMul(p.z, bconst)))
-	if subtle.ConstantTimeCompare(tmp[:], zero[:]) != 1 {
+	if CompareUint32s(tmp, zero) != 0 {
 		panic("invalid point")
 	}
 }
@@ -171,10 +168,10 @@ func GEJacobianAdd(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
 	// 13 feMul + 10 feSquare + 15 feAdd + 12 feSub
 	sum1 := GEJacobianDouble(a)
 	sum2 := geAddDistinct(a, b)
-	cond := subtle.ConstantTimeCompare(sum2.x[:], zero[:])
-	cond &= subtle.ConstantTimeCompare(sum2.y[:], zero[:])
-	cond &= subtle.ConstantTimeCompare(sum2.z[:], zero[:])
-	return choiceJacobianPoint(cond, sum1, sum2)
+	cond := CompareUint32s(sum2.x, zero) & 1
+	cond |= CompareUint32s(sum2.y, zero) & 1
+	cond |= CompareUint32s(sum2.z, zero) & 1
+	return choiceJacobianPoint(cond^1, sum1, sum2)
 }
 
 // GEProjAdd uses Algorithm 7 in https://eprint.iacr.org/2015/1060
@@ -252,8 +249,8 @@ func GEProjDouble(p *ProjPoint) *ProjPoint {
 // If a = b != O, this function returns (0, 0, 0), which is invalid.
 func geAddDistinct(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
 	// 11 feMul + 5 feSquare + 5 feAdd + 8 feSub
-	aIsZero := subtle.ConstantTimeCompare(a.z[:], zero[:])
-	bIsZero := subtle.ConstantTimeCompare(b.z[:], zero[:])
+	aIsZero := CompareUint32s(a.z, zero) ^ 1
+	bIsZero := CompareUint32s(b.z, zero) ^ 1
 	// https://hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-2007-bl
 	z1z1 := feSquare(a.z)
 	z2z2 := feSquare(b.z)
@@ -283,7 +280,7 @@ func geAddDistinct(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
 }
 
 // GEVartimePoint computes n G where G is the base point.
-// It does not have a constant-time guarantee, but it is faster than GEPoint.
+// It does not have a constant-time guarantee.
 func GEVartimePoint(n Scalar) *Point {
 	// For return values of GEVartimeJacobianPoint z = 1 always holds, so it is valid as a JacobianPoint/ProjPoint
 	return (*Point)(GEVartimeJacobianPoint(n))
@@ -295,7 +292,7 @@ func GEVartimeJacobianPoint(n Scalar) *JacobianPoint {
 	var xBytes, yBytes [32]byte
 	x.FillBytes(xBytes[:])
 	y.FillBytes(yBytes[:])
-	return &JacobianPoint{x: xBytes, y: yBytes, z: one}
+	return &JacobianPoint{x: feFromBytes(xBytes), y: feFromBytes(yBytes), z: one}
 }
 
 func GEVartimeProjPoint(n Scalar) *ProjPoint {
@@ -331,9 +328,9 @@ func GEProjPoint(n Scalar) *ProjPoint {
 func choiceJacobianPoint(cond int, one *JacobianPoint, zero *JacobianPoint) *JacobianPoint {
 	var p JacobianPoint
 	for j := 0; j < len(one.x); j++ {
-		p.x[j] = byte(subtle.ConstantTimeSelect(cond, int(one.x[j]), int(zero.x[j])))
-		p.y[j] = byte(subtle.ConstantTimeSelect(cond, int(one.y[j]), int(zero.y[j])))
-		p.z[j] = byte(subtle.ConstantTimeSelect(cond, int(one.z[j]), int(zero.z[j])))
+		p.x[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.x[j]), int(zero.x[j])))
+		p.y[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.y[j]), int(zero.y[j])))
+		p.z[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.z[j]), int(zero.z[j])))
 	}
 	return &p
 }
@@ -341,9 +338,9 @@ func choiceJacobianPoint(cond int, one *JacobianPoint, zero *JacobianPoint) *Jac
 func choiceProjPoint(cond int, one *ProjPoint, zero *ProjPoint) *ProjPoint {
 	var p ProjPoint
 	for j := 0; j < len(one.x); j++ {
-		p.x[j] = byte(subtle.ConstantTimeSelect(cond, int(one.x[j]), int(zero.x[j])))
-		p.y[j] = byte(subtle.ConstantTimeSelect(cond, int(one.y[j]), int(zero.y[j])))
-		p.z[j] = byte(subtle.ConstantTimeSelect(cond, int(one.z[j]), int(zero.z[j])))
+		p.x[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.x[j]), int(zero.x[j])))
+		p.y[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.y[j]), int(zero.y[j])))
+		p.z[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.z[j]), int(zero.z[j])))
 	}
 	return &p
 }
