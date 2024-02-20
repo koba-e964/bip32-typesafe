@@ -5,35 +5,56 @@ import (
 	"math/big"
 )
 
+func charToIndex(char byte) int {
+	index := char - '1'
+	if char >= 'A' {
+		index = char - 'A' + 9
+	}
+	if char >= 'J' {
+		index = char - 'J' + 17
+	}
+	if char >= 'P' {
+		index = char - 'P' + 22
+	}
+	if char >= 'a' {
+		index = char - 'a' + 33
+	}
+	if char >= 'm' {
+		index = char - 'm' + 44
+	}
+	return int(index)
+}
+
 // VartimeDecode writes into output.
 //
 // If the resulting integer doesn't fit in output,
 // the higher part will be truncated.
 //
-// This function does not have a constant-time guarantee.
+// This function does not have a constant-time guarantee, but it is faster than Decode.
 func VartimeDecode(encoded string, output []byte) {
 	tmp := big.NewInt(0)
-	radix := big.NewInt(58)
 	targetLen := len(output)
+
+	// Using technique in https://github.com/btcsuite/btcd/blob/13152b35e191385a874294a9dbc902e48b1d71b0/btcutil/base58/base58.go#L34-L49
+	baseAccum := int64(1)
+	lenAccum := 0
+	addendum := int64(0)
+
 	for i := 0; i < len(encoded); i++ {
 		char := encoded[i]
-		index := char - '1'
-		if char >= 'A' {
-			index = char - 'A' + 9
+		index := charToIndex(char)
+		baseAccum *= 58
+		lenAccum++
+		addendum = addendum*58 + int64(index)
+		if lenAccum == 10 {
+			tmp.Mul(tmp, big.NewInt(baseAccum)).Add(tmp, big.NewInt(addendum))
+			baseAccum = 1
+			lenAccum = 0
+			addendum = 0
 		}
-		if char >= 'J' {
-			index = char - 'J' + 17
-		}
-		if char >= 'P' {
-			index = char - 'P' + 22
-		}
-		if char >= 'a' {
-			index = char - 'a' + 33
-		}
-		if char >= 'm' {
-			index = char - 'm' + 44
-		}
-		tmp.Mul(tmp, radix).Add(tmp, big.NewInt(int64(index)))
+	}
+	if lenAccum > 0 {
+		tmp.Mul(tmp, big.NewInt(baseAccum)).Add(tmp, big.NewInt(addendum))
 	}
 	if tmp.BitLen() > 8*targetLen {
 		mask := big.NewInt(1)
