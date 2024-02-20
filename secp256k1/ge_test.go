@@ -76,6 +76,7 @@ func TestGEPoint3(t *testing.T) {
 func BenchmarkGEJacobianPoint_VariableTime_Short(b *testing.B) {
 	var two Scalar
 	two[31] = 2
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		GEVartimeJacobianPoint(two)
@@ -87,6 +88,7 @@ func BenchmarkGEJacobianPoint_VariableTime_Long(b *testing.B) {
 	for i := 0; i < len(k); i++ {
 		k[i] = 0xff
 	}
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		GEVartimeJacobianPoint(k)
@@ -96,6 +98,7 @@ func BenchmarkGEJacobianPoint_VariableTime_Long(b *testing.B) {
 func BenchmarkGEJacobianPoint_ConstantTime_Short(b *testing.B) {
 	var two Scalar
 	two[31] = 2
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		GEJacobianPoint(two)
@@ -107,6 +110,7 @@ func BenchmarkGEJacobianPoint_ConstantTime_Long(b *testing.B) {
 	for i := 0; i < len(k); i++ {
 		k[i] = 0xff
 	}
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		GEJacobianPoint(k)
@@ -116,6 +120,7 @@ func BenchmarkGEJacobianPoint_ConstantTime_Long(b *testing.B) {
 func BenchmarkGEProjPoint_ConstantTime_Short(b *testing.B) {
 	var two Scalar
 	two[31] = 2
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		GEProjPoint(two)

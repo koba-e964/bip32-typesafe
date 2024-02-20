@@ -171,7 +171,8 @@ func GEJacobianAdd(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
 	cond := CompareUint32s(sum2.x, zero) & 1
 	cond |= CompareUint32s(sum2.y, zero) & 1
 	cond |= CompareUint32s(sum2.z, zero) & 1
-	return choiceJacobianPoint(cond^1, sum1, sum2)
+	sum1.choiceJacobianPoint(cond^1, sum1, sum2)
+	return sum1
 }
 
 // GEProjAdd uses Algorithm 7 in https://eprint.iacr.org/2015/1060
@@ -276,7 +277,9 @@ func geAddDistinct(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
 	z3 = feSub(z3, z2z2)
 	z3 = feMul(z3, h)
 	p := &JacobianPoint{x: x3, y: y3, z: z3}
-	return choiceJacobianPoint(aIsZero, b, choiceJacobianPoint(bIsZero, a, p))
+	p.choiceJacobianPoint(bIsZero, a, p)
+	p.choiceJacobianPoint(aIsZero, b, p)
+	return p
 }
 
 // GEVartimePoint computes n G where G is the base point.
@@ -310,7 +313,7 @@ func GEJacobianPoint(n Scalar) *JacobianPoint {
 	for i := 0; i < 256; i++ {
 		prodCurrent := GEJacobianAdd(prod, &table[i])
 		cond := int(n[31-i/8]>>(i%8)) & 1
-		prod = choiceJacobianPoint(cond, prodCurrent, prod)
+		prod.choiceJacobianPoint(cond, prodCurrent, prod)
 	}
 	return prod
 }
@@ -320,27 +323,23 @@ func GEProjPoint(n Scalar) *ProjPoint {
 	for i := 0; i < 256; i++ {
 		prodCurrent := GEProjAdd(prod, &projTable[i])
 		cond := int(n[31-i/8]>>(i%8)) & 1
-		prod = choiceProjPoint(cond, prodCurrent, prod)
+		prod.choiceProjPoint(cond, prodCurrent, prod)
 	}
 	return prod
 }
 
-func choiceJacobianPoint(cond int, one *JacobianPoint, zero *JacobianPoint) *JacobianPoint {
-	var p JacobianPoint
+func (p *JacobianPoint) choiceJacobianPoint(cond int, one *JacobianPoint, zero *JacobianPoint) {
 	for j := 0; j < len(one.x); j++ {
 		p.x[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.x[j]), int(zero.x[j])))
 		p.y[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.y[j]), int(zero.y[j])))
 		p.z[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.z[j]), int(zero.z[j])))
 	}
-	return &p
 }
 
-func choiceProjPoint(cond int, one *ProjPoint, zero *ProjPoint) *ProjPoint {
-	var p ProjPoint
+func (p *ProjPoint) choiceProjPoint(cond int, one *ProjPoint, zero *ProjPoint) {
 	for j := 0; j < len(one.x); j++ {
 		p.x[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.x[j]), int(zero.x[j])))
 		p.y[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.y[j]), int(zero.y[j])))
 		p.z[j] = uint32(subtle.ConstantTimeSelect(cond, int(one.z[j]), int(zero.z[j])))
 	}
-	return &p
 }

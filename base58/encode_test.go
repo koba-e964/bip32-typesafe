@@ -37,6 +37,7 @@ func TestEncode2(t *testing.T) {
 func BenchmarkEncode_ConstantTime_Long(b *testing.B) {
 	var data [82]byte
 	data[0] = 1
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Encode(data[:], 111)
@@ -46,6 +47,7 @@ func BenchmarkEncode_ConstantTime_Long(b *testing.B) {
 func BenchmarkEncode_ConstantTime_Short(b *testing.B) {
 	var data [82]byte
 	data[41] = 1
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Encode(data[:], 111)
@@ -55,6 +57,7 @@ func BenchmarkEncode_ConstantTime_Short(b *testing.B) {
 func BenchmarkEncode_VariableTime_Long(b *testing.B) {
 	var data [82]byte
 	data[0] = 1
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		VartimeEncode(data[:], 111)
@@ -64,6 +67,7 @@ func BenchmarkEncode_VariableTime_Long(b *testing.B) {
 func BenchmarkEncode_VariableTime_Short(b *testing.B) {
 	var data [82]byte
 	data[41] = 1
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		VartimeEncode(data[:], 111)

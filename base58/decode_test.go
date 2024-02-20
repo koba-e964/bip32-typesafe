@@ -21,6 +21,7 @@ func TestDecode0(t *testing.T) {
 func BenchmarkDecode_ConstantTime(b *testing.B) {
 	encoded := "5HwoXVkHoRM8sL2KmNRS217n1g8mPPBomrY7yehCuXC1115WWsh"
 	var outputConstant [37]byte
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		Decode(encoded, outputConstant[:])
@@ -29,6 +30,7 @@ func BenchmarkDecode_ConstantTime(b *testing.B) {
 func BenchmarkDecode_VariableTime(b *testing.B) {
 	encoded := "5HwoXVkHoRM8sL2KmNRS217n1g8mPPBomrY7yehCuXC1115WWsh"
 	var outputConstant [37]byte
+	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		VartimeDecode(encoded, outputConstant[:])
