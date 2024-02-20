@@ -37,29 +37,43 @@ func Encode(a []byte, resultLength int) string {
 	}
 	result := make([]byte, resultLength)
 	// log(58)/log(2) > 5.857 > 23/4, so every 4 letters we can delete 23 bits
-	deletedQuarterBits := 0
-	for i := 0; i < resultLength; i++ {
-		remainder := div58(tmp[min(len(tmp), deletedQuarterBits/128):])
-		char := '1' + remainder                                                                              // [0,9): '1'..'9'
-		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(9, remainder), 'A'+remainder-9, char)   // [9,17): 'A'..'H'
-		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(17, remainder), 'J'+remainder-17, char) // [17,22): 'J'..'N'
-		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(22, remainder), 'P'+remainder-22, char) // [22,33): 'P'..'Z'
-		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(33, remainder), 'a'+remainder-33, char) // [33,44): 'a'..'k'
-		char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(44, remainder), 'm'+remainder-44, char) // [44,58): 'm'..'z'
-		result[resultLength-1-i] = byte(char)
-		deletedQuarterBits += 23
+	deletedBits := 0
+	for i := 0; i < resultLength; i += 4 {
+		rems := div58(tmp[min(len(tmp), deletedBits/32):])
+		conv := func(remainder int) byte {
+			char := '1' + remainder                                                                              // [0,9): '1'..'9'
+			char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(9, remainder), 'A'+remainder-9, char)   // [9,17): 'A'..'H'
+			char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(17, remainder), 'J'+remainder-17, char) // [17,22): 'J'..'N'
+			char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(22, remainder), 'P'+remainder-22, char) // [22,33): 'P'..'Z'
+			char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(33, remainder), 'a'+remainder-33, char) // [33,44): 'a'..'k'
+			char = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq(44, remainder), 'm'+remainder-44, char) // [44,58): 'm'..'z'
+			return byte(char)
+		}
+		result[resultLength-1-i] = conv(rems[0])
+		for j := 1; j < 4; j++ {
+			if i+j < resultLength {
+				result[resultLength-1-i-j] = conv(rems[j])
+			}
+		}
+		deletedBits += 23
 	}
 	return unsafe.String(unsafe.SliceData(result), len(result))
 }
 
-func div58(a []uint32) int {
+func div58(a []uint32) [4]int {
+	// Using the idea described in https://github.com/btcsuite/btcd/blob/13152b35e191385a874294a9dbc902e48b1d71b0/btcutil/base58/base58.go#L34-L49
+	const d = 58 * 58 * 58 * 58
 	var carry uint64
 	for i := 0; i < len(a); i++ {
 		tmp := carry<<32 | uint64(a[i])
-		q := tmp / 58
-		r := tmp % 58
+		q := tmp / d
 		a[i] = uint32(q)
-		carry = r
+		carry = tmp - q*d
 	}
-	return int(carry)
+	var res [4]int
+	for i := 0; i < 4; i++ {
+		res[i] = int(carry % 58)
+		carry /= 58
+	}
+	return res
 }
