@@ -5,6 +5,7 @@ package base58
 import (
 	"crypto/subtle"
 	"math/big"
+	"unsafe"
 )
 
 // VartimeEncode encodes a byte slice into a base58 string with length resultLength.
@@ -48,13 +49,13 @@ func Encode(a []byte, resultLength int) string {
 		result[resultLength-1-i] = byte(char)
 		deletedQuarterBits += 23
 	}
-	return string(result)
+	return unsafe.String(unsafe.SliceData(result), len(result))
 }
 
 func div58(a []uint32) int {
-	var carry int64
+	var carry uint64
 	for i := 0; i < len(a); i++ {
-		tmp := carry<<32 | int64(a[i])
+		tmp := carry<<32 | uint64(a[i])
 		q := tmp / 58
 		r := tmp % 58
 		a[i] = uint32(q)
