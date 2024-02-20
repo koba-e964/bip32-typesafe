@@ -8,20 +8,30 @@ import (
 	"unsafe"
 )
 
+// Using the idea described in https://github.com/btcsuite/btcd/blob/13152b35e191385a874294a9dbc902e48b1d71b0/btcutil/base58/base58.go#L34-L49
+var (
+	radix10  = new(big.Int).Exp(big.NewInt(58), big.NewInt(10), nil) // 58^10 < 2^64
+	alphabet = []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+)
+
 // VartimeEncode encodes a byte slice into a base58 string with length resultLength.
 //
 // This function does not have a constant-time guarantee.
 func VartimeEncode(a []byte, resultLength int) string {
 	tmp := big.NewInt(0)
-	radix := big.NewInt(58)
 	tmp.SetBytes(a)
 	result := make([]byte, resultLength)
-	alphabet := []byte("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
-	for i := 0; i < resultLength; i++ {
+	for i := 0; i < resultLength; i += 10 {
 		var remainder big.Int
-		tmp.DivMod(tmp, radix, &remainder)
-		index := remainder.Int64()
-		result[resultLength-1-i] = alphabet[index]
+		tmp.DivMod(tmp, radix10, &remainder)
+		remainder64 := remainder.Uint64()
+		for j := 0; j < 10; j++ {
+			if i+j < resultLength {
+				rem58 := remainder64 % 58
+				remainder64 /= 58
+				result[resultLength-1-i-j] = alphabet[int(rem58)]
+			}
+		}
 	}
 	return string(result)
 }
