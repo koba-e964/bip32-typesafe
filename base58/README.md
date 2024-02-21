@@ -1,5 +1,5 @@
 # base58
-`base58` is a fast implementation of Base58 with resistance to side-channel attacks.
+`base58` is a fast implementation of [Base58](https://en.bitcoin.it/wiki/Base58Check_encoding) with resistance to side-channel attacks.
 
 # Benchmarks
 ```console

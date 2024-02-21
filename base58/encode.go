@@ -1,5 +1,3 @@
-// Package base58 handles encoding/decoding of base58.
-// This package provides functions that work constant-time, as well as their variable-time counterparts.
 package base58
 
 import (
