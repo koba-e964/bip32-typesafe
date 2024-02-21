@@ -4,7 +4,7 @@ import (
 	"crypto/subtle"
 	"encoding/binary"
 
-	"github.com/koba-e964/bip32-typesafe/base58"
+	"github.com/koba-e964/base58-go"
 	"github.com/koba-e964/bip32-typesafe/secp256k1"
 )
 

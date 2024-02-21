@@ -1,9 +1,10 @@
 module github.com/koba-e964/bip32-typesafe
 
-go 1.21
+go 1.22.0
 
 require (
 	github.com/FactomProject/btcutilecc v0.0.0-20130527213604-d3a63a5752ec
+	github.com/koba-e964/base58-go v0.1.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/crypto v0.16.0
 )

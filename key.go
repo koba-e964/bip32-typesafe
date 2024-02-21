@@ -3,7 +3,7 @@ package bip32
 import (
 	"encoding/hex"
 
-	"github.com/koba-e964/bip32-typesafe/base58"
+	"github.com/koba-e964/base58-go"
 )
 
 // FirstHardenedChildIndex is the first index of hardened child keys.
