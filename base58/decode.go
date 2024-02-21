@@ -5,7 +5,7 @@ import (
 	"math/big"
 )
 
-func charToIndex(char byte) int {
+func vartimeCharToIndex(char byte) int {
 	index := char - '1'
 	if char >= 'A' {
 		index = char - 'A' + 9
@@ -42,7 +42,7 @@ func VartimeDecode(encoded string, output []byte) {
 
 	for i := 0; i < len(encoded); i++ {
 		char := encoded[i]
-		index := charToIndex(char)
+		index := vartimeCharToIndex(char)
 		baseAccum *= 58
 		lenAccum++
 		addendum = addendum*58 + int64(index)
@@ -74,6 +74,10 @@ func VartimeDecode(encoded string, output []byte) {
 func Decode(encoded string, output []byte) {
 	targetLen := len(output)
 	tmp := make([]uint32, (targetLen+3)/4)
+	multiplier := 1
+	addendum := 0
+	lenUnprocessed := 0
+	maybeNonzeroBits := 0
 	for i := 0; i < len(encoded); i++ {
 		char := int(encoded[i])
 		index := char - '1'                                                                           // [0,9): '1'..'9'
@@ -82,17 +86,29 @@ func Decode(encoded string, output []byte) {
 		index = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq('P', char), char-'P'+22, index) // [22,33): 'P'..'Z'
 		index = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq('a', char), char-'a'+33, index) // [33,44): 'a'..'k'
 		index = subtle.ConstantTimeSelect(subtle.ConstantTimeLessOrEq('m', char), char-'m'+44, index) // [44,58): 'm'..'z'
-		mul58Add(tmp, index)
+		multiplier *= 58
+		addendum = addendum*58 + index
+		lenUnprocessed++
+		maybeNonzeroBits += 6 // 58 < 2^6
+		if lenUnprocessed == 5 {
+			inplaceMulAdd(tmp[len(tmp)-min(len(tmp), (maybeNonzeroBits+7)/8):], multiplier, addendum)
+			multiplier = 1
+			addendum = 0
+			lenUnprocessed = 0
+		}
+	}
+	if lenUnprocessed > 0 {
+		inplaceMulAdd(tmp, multiplier, addendum)
 	}
 	for i := 0; i < targetLen; i++ {
 		output[targetLen-1-i] = byte(tmp[len(tmp)-1-i/4] >> (8 * (i % 4)))
 	}
 }
 
-func mul58Add(a []uint32, addendum int) {
-	carry := int64(addendum)
+func inplaceMulAdd(a []uint32, multiplier int, addendum int) {
+	carry := uint64(addendum)
 	for i := len(a) - 1; i >= 0; i-- {
-		tmp := int64(a[i])*58 + carry
+		tmp := uint64(a[i])*uint64(multiplier) + carry
 		thisCarry := tmp >> 32
 		a[i] = uint32(tmp)
 		carry = thisCarry
