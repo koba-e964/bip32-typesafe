@@ -133,7 +133,7 @@ func (p *PublicKey) NewChildKey(childIdx uint32) (*PublicKey, error) {
 	if childIdx >= FirstHardenedChildIndex {
 		return nil, ErrorHardenedPublicChildKey
 	}
-	if p.depth >= 255 {
+	if p.depth == 255 {
 		return nil, ErrorTooDeepKey
 	}
 	uncompressed, err := p.publicKey.Uncompress()
