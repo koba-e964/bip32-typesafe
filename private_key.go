@@ -150,7 +150,7 @@ func DeserializePrivateKey(data [KeyLengthInBytes]byte) (*PrivateKey, error) {
 //   - ErrorTooDeepKey: if this PrivateKey has depth 255
 //   - ErrorInvalidPrivateKey: if the derived private key satisfies parse_{256}(I_L) >= n or k_i = 0 (with probability < 2^{-127})
 func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
-	if p.depth >= 255 {
+	if p.depth == 255 {
 		return nil, ErrorTooDeepKey
 	}
 	pubPart := secp256k1.GEPoint(p.privateKey).Compress()
