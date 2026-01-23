@@ -21,6 +21,24 @@ func TestGEJacobianAdd(t *testing.T) {
 	assert.Equal(t, base.Compress(), result.Compress())
 }
 
+func TestGEProjDouble(t *testing.T) {
+	// Test that doubling gives the same result as adding a point to itself
+	base := &ProjPoint{x: gx, y: gy, z: one}
+	var doubled ProjPoint
+	doubled.GEProjDouble(base)
+	
+	var addedToSelf ProjPoint
+	addedToSelf.GEProjAdd(base, base)
+	
+	assert.Equal(t, addedToSelf.Compress(), doubled.Compress())
+	
+	// Also compare with known test vector (2*G)
+	var two Scalar
+	two[31] = 2
+	expected := GEVartimePoint(two).Compress()
+	assert.Equal(t, expected, doubled.Compress())
+}
+
 func TestGEProjAdd(t *testing.T) {
 	base := &ProjPoint{x: gx, y: gy, z: one}
 	zero := &ProjPoint{y: one}

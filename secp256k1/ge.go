@@ -165,7 +165,10 @@ func (p *Point) GEAdd(a *Point, b *Point) {
 
 // GEJacobianAdd computes a + b. It runs in constant-time.
 func GEJacobianAdd(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
-	// 13 feMul + 10 feSquare + 15 feAdd + 12 feSub
+	// Uses a complete addition strategy: compute both doubling and distinct addition,
+	// then select the correct result based on whether the inputs are equal.
+	// This ensures constant-time operation while handling all cases.
+	// Cost: 13 feMul + 10 feSquare + 15 feAdd + 12 feSub
 	sum1 := GEJacobianDouble(a)
 	sum2 := geAddDistinct(a, b)
 	cond := CompareUint32s(sum2.x, zero) & 1
@@ -245,6 +248,7 @@ func GEJacobianDouble(p *JacobianPoint) *JacobianPoint {
 
 // GEProjDouble computes 2*arg. It runs in constant-time.
 func (p *ProjPoint) GEProjDouble(arg *ProjPoint) {
+	// Using complete addition formula (Algorithm 7) for doubling
 	// 12 feMul + 2 feMul21 + 14 feAdd + 5 feSub
 	p.GEProjAdd(arg, arg)
 }
