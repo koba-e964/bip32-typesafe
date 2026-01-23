@@ -49,13 +49,15 @@ func (p *PrivateKey) GetPublicKey() *PublicKey {
 	if p.version == [4]byte(testnetPrivateKeyVersion) {
 		version = testnetPublicKeyVersion
 	}
+	var pubKey secp256k1.Point
+	pubKey.GEPoint(p.privateKey)
 	publicKey := PublicKey{
 		version:           [4]byte(version),
 		depth:             p.depth,
 		parentFingerprint: p.parentFingerprint,
 		childNumber:       p.childNumber,
 		chainCode:         p.chainCode,
-		publicKey:         secp256k1.GEPoint(p.privateKey).Compress(),
+		publicKey:         pubKey.Compress(),
 	}
 	return &publicKey
 }
@@ -153,10 +155,12 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	if p.depth == 255 {
 		return nil, ErrorTooDeepKey
 	}
-	pubPart := secp256k1.GEPoint(p.privateKey).Compress()
+	var pubPart secp256k1.Point
+	pubPart.GEPoint(p.privateKey)
+	pubPartCompressed := pubPart.Compress()
 	keyData := [33]byte(append([]byte{0x00}, p.privateKey[:]...))
 	if childIdx < FirstHardenedChildIndex {
-		keyData = pubPart
+		keyData = pubPartCompressed
 	}
 	l := hmacThing(p.chainCode, keyData, childIdx)
 	ll := [32]byte(l[:32])
@@ -164,7 +168,7 @@ func (p *PrivateKey) NewChildKey(childIdx uint32) (*PrivateKey, error) {
 	child := PrivateKey{
 		version:           p.version,
 		depth:             p.depth + 1,
-		parentFingerprint: [4]byte(hash160(pubPart[:])[:4]),
+		parentFingerprint: [4]byte(hash160(pubPartCompressed[:])[:4]),
 		childNumber:       uint32ToBytes(childIdx),
 		chainCode:         lr,
 		privateKey:        secp256k1.SCAdd(ll, p.privateKey),
