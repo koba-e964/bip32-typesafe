@@ -24,7 +24,8 @@ func TestGEJacobianAdd(t *testing.T) {
 func TestGEProjAdd(t *testing.T) {
 	base := &ProjPoint{x: gx, y: gy, z: one}
 	zero := &ProjPoint{y: one}
-	result := GEProjAdd(base, zero)
+	var result ProjPoint
+	result.GEProjAdd(base, zero)
 	assert.Equal(t, base.Compress(), result.Compress())
 }
 
@@ -32,14 +33,17 @@ func TestGEPoint0(t *testing.T) {
 	var two Scalar
 	two[31] = 2
 	expected := GEVartimePoint(two).Compress()
-	result := GEPoint(two).Compress()
+	var point Point
+	point.GEPoint(two)
+	result := point.Compress()
 	assert.Equal(t, expected, result)
 }
 
 func TestGEPoint1(t *testing.T) {
 	expected := zero
-	result := GEPoint(Order)
-	assert.Equal(t, expected, result.z)
+	var point Point
+	point.GEPoint(Order)
+	assert.Equal(t, expected, point.z)
 }
 
 func TestGEPoint2(t *testing.T) {
@@ -47,8 +51,11 @@ func TestGEPoint2(t *testing.T) {
 	exp[31] += 1
 	one := Scalar{}
 	one[31] = 1
-	expected := GEPoint(one).Compress()
-	result := GEPoint(exp).Compress()
+	var point Point
+	point.GEPoint(one)
+	expected := point.Compress()
+	point.GEPoint(exp)
+	result := point.Compress()
 	assert.Equal(t, expected, result)
 }
 
@@ -68,7 +75,9 @@ func TestGEPoint3(t *testing.T) {
 	for _, test := range tests {
 		var sc Scalar
 		sc[31] = test.k
-		result := GEPoint(sc).Compress()
+		var point Point
+		point.GEPoint(sc)
+		result := point.Compress()
 		assert.Equal(t, test.result, result[:])
 	}
 }
@@ -120,9 +129,10 @@ func BenchmarkGEJacobianPoint_ConstantTime_Long(b *testing.B) {
 func BenchmarkGEProjPoint_ConstantTime_Short(b *testing.B) {
 	var two Scalar
 	two[31] = 2
+	var p ProjPoint
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		GEProjPoint(two)
+		p.GEProjPoint(two)
 	}
 }

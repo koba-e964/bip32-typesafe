@@ -143,7 +143,10 @@ func (p *PublicKey) NewChildKey(childIdx uint32) (*PublicKey, error) {
 	l := hmacThing(p.chainCode, p.publicKey, childIdx)
 	ll := [32]byte(l[:32])
 	lr := [32]byte(l[32:])
-	derivedPubKey := secp256k1.GEAdd(uncompressed, secp256k1.GEPoint(ll))
+	var derivedPubKey secp256k1.Point
+	var llPoint secp256k1.Point
+	llPoint.GEPoint(ll)
+	derivedPubKey.GEAdd(uncompressed, &llPoint)
 	child := PublicKey{
 		version:           p.version,
 		depth:             p.depth + 1,

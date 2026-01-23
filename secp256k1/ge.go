@@ -70,7 +70,7 @@ func init() {
 	projTable[0] = ProjPoint{x: gx, y: gy, z: one}
 	for i := 1; i < 256; i++ {
 		table[i] = *GEJacobianDouble(&table[i-1])
-		projTable[i] = *GEProjAdd(&projTable[i-1], &projTable[i-1])
+		projTable[i].GEProjAdd(&projTable[i-1], &projTable[i-1])
 		projTable[i].assertValid()
 	}
 }
@@ -159,8 +159,8 @@ func (p *ProjPoint) assertValid() {
 }
 
 // GEAdd computes a + b. It runs in constant-time.
-func GEAdd(a *Point, b *Point) *Point {
-	return GEProjAdd(a, b)
+func (p *Point) GEAdd(a *Point, b *Point) {
+	p.GEProjAdd(a, b)
 }
 
 // GEJacobianAdd computes a + b. It runs in constant-time.
@@ -176,7 +176,7 @@ func GEJacobianAdd(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
 }
 
 // GEProjAdd uses Algorithm 7 in https://eprint.iacr.org/2015/1060
-func GEProjAdd(a *ProjPoint, b *ProjPoint) *ProjPoint {
+func (p *ProjPoint) GEProjAdd(a *ProjPoint, b *ProjPoint) {
 	// 12 feMul + 2 feMul21 + 14 feAdd + 5 feSub
 	t0 := feMul(a.x, b.x)
 	t1 := feMul(a.y, b.y)
@@ -211,12 +211,14 @@ func GEProjAdd(a *ProjPoint, b *ProjPoint) *ProjPoint {
 	t0 = feMul(t0, t3)
 	z3 = feMul(z3, t4)
 	z3 = feAdd(z3, t0)
-	return &ProjPoint{x: x3, y: y3, z: z3}
+	p.x = x3
+	p.y = y3
+	p.z = z3
 }
 
-// GEDouble computes 2p. It runs in constant-time.
-func GEDouble(p *Point) *Point {
-	return GEProjDouble(p)
+// GEDouble computes 2*arg. It runs in constant-time.
+func (p *Point) GEDouble(arg *Point) {
+	p.GEProjDouble(arg)
 }
 
 // GEJacobianDouble computes 2p. It runs in constant-time.
@@ -241,10 +243,10 @@ func GEJacobianDouble(p *JacobianPoint) *JacobianPoint {
 	return &JacobianPoint{x: x3, y: y3, z: z3}
 }
 
-// GEProjDouble computes 2p. It runs in constant-time.
-func GEProjDouble(p *ProjPoint) *ProjPoint {
+// GEProjDouble computes 2*arg. It runs in constant-time.
+func (p *ProjPoint) GEProjDouble(arg *ProjPoint) {
 	// 12 feMul + 2 feMul21 + 14 feAdd + 5 feSub
-	return GEProjAdd(p, p)
+	p.GEProjAdd(arg, arg)
 }
 
 // If a = b != O, this function returns (0, 0, 0), which is invalid.
@@ -304,8 +306,8 @@ func GEVartimeProjPoint(n Scalar) *ProjPoint {
 }
 
 // GEPoint computes n G where G is the base point. It runs in constant-time.
-func GEPoint(n Scalar) *Point {
-	return GEProjPoint(n)
+func (p *Point) GEPoint(n Scalar) {
+	p.GEProjPoint(n)
 }
 
 func GEJacobianPoint(n Scalar) *JacobianPoint {
@@ -318,14 +320,14 @@ func GEJacobianPoint(n Scalar) *JacobianPoint {
 	return prod
 }
 
-func GEProjPoint(n Scalar) *ProjPoint {
-	prod := &ProjPoint{y: one}
+func (p *ProjPoint) GEProjPoint(n Scalar) {
+	*p = ProjPoint{y: one}
+	var prodCurrent ProjPoint
 	for i := 0; i < 256; i++ {
-		prodCurrent := GEProjAdd(prod, &projTable[i])
+		prodCurrent.GEProjAdd(p, &projTable[i])
 		cond := int(n[31-i/8]>>(i%8)) & 1
-		prod.choiceProjPoint(cond, prodCurrent, prod)
+		p.choiceProjPoint(cond, &prodCurrent, p)
 	}
-	return prod
 }
 
 func (p *JacobianPoint) choiceJacobianPoint(cond int, one *JacobianPoint, zero *JacobianPoint) {
