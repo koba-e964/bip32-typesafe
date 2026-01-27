@@ -21,6 +21,13 @@ func TestGEJacobianAdd(t *testing.T) {
 	assert.Equal(t, base.Compress(), result.Compress())
 }
 
+func TestGEJacobianAdd_Double(t *testing.T) {
+	base := &JacobianPoint{x: gx, y: gy, z: one}
+	result := GEJacobianAdd(base, base)
+	expected := GEJacobianDouble(base)
+	assert.Equal(t, expected.Compress(), result.Compress())
+}
+
 func TestGEProjAdd(t *testing.T) {
 	base := &ProjPoint{x: gx, y: gy, z: one}
 	zero := &ProjPoint{y: one}

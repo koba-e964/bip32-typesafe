@@ -61,18 +61,29 @@ type ProjPoint struct {
 }
 
 var zero, one fe
-var table [256]JacobianPoint // table[i] = 2^i * G
 var projTable [256]ProjPoint // projTable[i] = 2^i * G
 
 func init() {
 	one[7] = 1
-	table[0] = JacobianPoint{x: gx, y: gy, z: one}
 	projTable[0] = ProjPoint{x: gx, y: gy, z: one}
 	for i := 1; i < 256; i++ {
-		table[i] = *GEJacobianDouble(&table[i-1])
 		projTable[i].GEProjAdd(&projTable[i-1], &projTable[i-1])
 		projTable[i].assertValid()
 	}
+}
+
+func jacobianToProj(p *JacobianPoint) ProjPoint {
+	z2 := feSquare(p.z)
+	z3 := feMul(z2, p.z)
+	x := feMul(p.x, p.z)
+	return ProjPoint{x: x, y: p.y, z: z3}
+}
+
+func projToJacobian(p *ProjPoint) JacobianPoint {
+	z2 := feSquare(p.z)
+	x := feMul(p.x, p.z)
+	y := feMul(p.y, z2)
+	return JacobianPoint{x: x, y: y, z: p.z}
 }
 
 func (a Compressed) Uncompress() (*Point, error) {
@@ -165,14 +176,12 @@ func (p *Point) GEAdd(a *Point, b *Point) {
 
 // GEJacobianAdd computes a + b. It runs in constant-time.
 func GEJacobianAdd(a *JacobianPoint, b *JacobianPoint) *JacobianPoint {
-	// 13 feMul + 10 feSquare + 15 feAdd + 12 feSub
-	sum1 := GEJacobianDouble(a)
-	sum2 := geAddDistinct(a, b)
-	cond := CompareUint32s(sum2.x, zero) & 1
-	cond |= CompareUint32s(sum2.y, zero) & 1
-	cond |= CompareUint32s(sum2.z, zero) & 1
-	sum1.choiceJacobianPoint(cond^1, sum1, sum2)
-	return sum1
+	ap := jacobianToProj(a)
+	bp := jacobianToProj(b)
+	var sumProj ProjPoint
+	sumProj.GEProjAdd(&ap, &bp)
+	sumJacobian := projToJacobian(&sumProj)
+	return &sumJacobian
 }
 
 // GEProjAdd uses Algorithm 7 in https://eprint.iacr.org/2015/1060
@@ -311,13 +320,16 @@ func (p *Point) GEPoint(n Scalar) {
 }
 
 func GEJacobianPoint(n Scalar) *JacobianPoint {
-	prod := &JacobianPoint{x: one, y: one}
+	var prod ProjPoint
+	prod.y = one
+	var prodCurrent ProjPoint
 	for i := 0; i < 256; i++ {
-		prodCurrent := GEJacobianAdd(prod, &table[i])
+		prodCurrent.GEProjAdd(&prod, &projTable[i])
 		cond := int(n[31-i/8]>>(i%8)) & 1
-		prod.choiceJacobianPoint(cond, prodCurrent, prod)
+		prod.choiceProjPoint(cond, &prodCurrent, &prod)
 	}
-	return prod
+	sumJacobian := projToJacobian(&prod)
+	return &sumJacobian
 }
 
 func (p *ProjPoint) GEProjPoint(n Scalar) {
