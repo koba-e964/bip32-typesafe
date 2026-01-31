@@ -254,8 +254,10 @@ func GEJacobianDouble(p *JacobianPoint) *JacobianPoint {
 
 // GEProjDouble computes 2*arg. It runs in constant-time.
 func (p *ProjPoint) GEProjDouble(arg *ProjPoint) {
-	// 12 feMul + 2 feMul21 + 14 feAdd + 5 feSub
-	p.GEProjAdd(arg, arg)
+	// Convert to Jacobian, use faster doubling with feSquare, then convert back.
+	jac := projToJacobian(arg)
+	doubled := GEJacobianDouble(&jac)
+	*p = jacobianToProj(doubled)
 }
 
 // If a = b != O, this function returns (0, 0, 0), which is invalid.
