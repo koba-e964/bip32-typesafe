@@ -43,3 +43,11 @@ func main() {
 
 ## Documentation
 Package info: [https://pkg.go.dev/github.com/koba-e964/bip32-typesafe](https://pkg.go.dev/github.com/koba-e964/bip32-typesafe)
+
+## Development
+This repo uses pre-commit to run `gofmt` and `staticcheck` before each commit.
+
+```sh
+pre-commit install
+pre-commit run --all-files
+```

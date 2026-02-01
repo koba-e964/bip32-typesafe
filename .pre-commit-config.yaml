@@ -1,0 +1,7 @@
+repos:
+  - repo: https://github.com/TekWizely/pre-commit-golang
+    rev: f298c082154b2cb239fac06a4f452368e66e66dd # v1.0.0-rc.4
+    hooks:
+      - id: go-fmt
+        args: ["-w"]
+      - id: go-staticcheck-repo-mod
