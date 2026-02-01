@@ -63,6 +63,7 @@ type ProjPoint struct {
 var zero, one fe
 var table [256]JacobianPoint // table[i] = 2^i * G
 var projTable [256]ProjPoint // projTable[i] = 2^i * G
+var projWindowTable [16]ProjPoint // projWindowTable[d] = d*G, index 0 is a dummy entry
 
 func init() {
 	one[7] = 1
@@ -72,6 +73,12 @@ func init() {
 		table[i] = *GEJacobianDouble(&table[i-1])
 		projTable[i].GEProjAdd(&projTable[i-1], &projTable[i-1])
 		projTable[i].assertValid()
+	}
+	projWindowTable[0] = projTable[0]
+	projWindowTable[1] = projTable[0]
+	for i := 2; i < len(projWindowTable); i++ {
+		projWindowTable[i].GEProjAdd(&projWindowTable[i-1], &projTable[0])
+		projWindowTable[i].assertValid()
 	}
 }
 
@@ -354,12 +361,30 @@ func GEJacobianPoint(n Scalar) *JacobianPoint {
 }
 
 func (p *ProjPoint) GEProjPoint(n Scalar) {
+	const windowSize = 4
+	const windowCount = 256 / windowSize
 	*p = ProjPoint{y: one}
+	var selected ProjPoint
 	var prodCurrent ProjPoint
-	for i := 0; i < 256; i++ {
-		prodCurrent.GEProjAdd(p, &projTable[i])
-		cond := int(n[31-i/8]>>(i%8)) & 1
-		p.choiceProjPoint(cond, &prodCurrent, p)
+	for w := windowCount - 1; w >= 0; w-- {
+		for i := 0; i < windowSize; i++ {
+			p.GEProjDouble(p)
+		}
+		byteIndex := 31 - (w / 2)
+		digit := n[byteIndex]
+		if w%2 == 0 {
+			digit &= 0x0f
+		} else {
+			digit >>= 4
+		}
+		selected = projWindowTable[0]
+		for i := 1; i < len(projWindowTable); i++ {
+			cond := subtle.ConstantTimeByteEq(digit, byte(i))
+			selected.choiceProjPoint(cond, &projWindowTable[i], &selected)
+		}
+		prodCurrent.GEProjAdd(p, &selected)
+		cond := subtle.ConstantTimeByteEq(digit, 0)
+		p.choiceProjPoint(1-cond, &prodCurrent, p)
 	}
 }
 
