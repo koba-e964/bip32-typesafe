@@ -61,9 +61,9 @@ type ProjPoint struct {
 }
 
 var zero, one fe
-var table [256]JacobianPoint // table[i] = 2^i * G
-var projTable [256]ProjPoint // projTable[i] = 2^i * G
-var projWindowTable [16]ProjPoint // projWindowTable[d] = d*G, index 0 is a dummy entry
+var table [256]JacobianPoint      // table[i] = 2^i * G
+var projTable [256]ProjPoint      // projTable[i] = 2^i * G
+var projWindowTable [16]ProjPoint // projWindowTable[d] = d*G, index 0 is the identity
 
 func init() {
 	one[7] = 1
@@ -74,7 +74,7 @@ func init() {
 		projTable[i].GEProjAdd(&projTable[i-1], &projTable[i-1])
 		projTable[i].assertValid()
 	}
-	projWindowTable[0] = projTable[0]
+	projWindowTable[0] = ProjPoint{y: one}
 	projWindowTable[1] = projTable[0]
 	for i := 2; i < len(projWindowTable); i++ {
 		projWindowTable[i].GEProjAdd(&projWindowTable[i-1], &projTable[0])
