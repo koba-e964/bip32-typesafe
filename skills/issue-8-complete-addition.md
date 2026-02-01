@@ -18,8 +18,11 @@ for prime-order short Weierstrass curves in this repo.
   validate completeness beyond distinct-point cases.
 - A specialized `GEProjDouble` that replaces multiplications with `feSquare`
   did not improve end-to-end benchmarks on Apple M2; `GEJacobianPoint` and
-  `GEProjPoint` benchmarks were ~1–28% slower in a 5x run
+  `GEProjPoint` benchmarks were slower in a 5x run
   (`go test ./secp256k1 -run=^$ -bench='GEJacobianPoint_|GEProjPoint_' -benchmem -count=5`).
+  Main (origin/main @ 7761398): 4206 / 1220375 / 1466087 / 1412107 / 909115 ns/op
+  Branch (geprojdouble-only):   5368 / 1276801 / 1487202 / 1445619 / 918919 ns/op
+  Delta: +27.63% / +4.62% / +1.44% / +2.37% / +1.08% (same order).
 
 ## Implementation Notes (Repo-Specific)
 
