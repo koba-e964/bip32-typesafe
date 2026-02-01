@@ -61,9 +61,12 @@ type ProjPoint struct {
 }
 
 var zero, one fe
-var table [256]JacobianPoint      // table[i] = 2^i * G
-var projTable [256]ProjPoint      // projTable[i] = 2^i * G
-var projWindowTable [16]ProjPoint // projWindowTable[d] = d*G, index 0 is the identity
+var table [256]JacobianPoint // table[i] = 2^i * G
+var projTable [256]ProjPoint // projTable[i] = 2^i * G
+const projWindowSize = 2
+const projWindowCount = 256 / projWindowSize
+
+var projWindowTable [1 << projWindowSize]ProjPoint // projWindowTable[d] = d*G, index 0 is the identity
 
 func init() {
 	one[7] = 1
@@ -361,22 +364,18 @@ func GEJacobianPoint(n Scalar) *JacobianPoint {
 }
 
 func (p *ProjPoint) GEProjPoint(n Scalar) {
-	const windowSize = 4
-	const windowCount = 256 / windowSize
 	*p = ProjPoint{y: one}
 	var selected ProjPoint
 	var prodCurrent ProjPoint
-	for w := windowCount - 1; w >= 0; w-- {
-		for i := 0; i < windowSize; i++ {
+	for w := projWindowCount - 1; w >= 0; w-- {
+		for i := 0; i < projWindowSize; i++ {
 			p.GEProjDouble(p)
 		}
-		byteIndex := 31 - (w / 2)
-		digit := n[byteIndex]
-		if w%2 == 0 {
-			digit &= 0x0f
-		} else {
-			digit >>= 4
-		}
+		bitIndex := w * projWindowSize
+		digit := (n[31-(bitIndex/8)] >> (bitIndex % 8)) & 1
+		nextBitIndex := bitIndex + 1
+		nextBit := (n[31-(nextBitIndex/8)] >> (nextBitIndex % 8)) & 1
+		digit |= nextBit << 1
 		selected = projWindowTable[0]
 		for i := 1; i < len(projWindowTable); i++ {
 			cond := subtle.ConstantTimeByteEq(digit, byte(i))
