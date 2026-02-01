@@ -23,6 +23,9 @@ for prime-order short Weierstrass curves in this repo.
   Main (origin/main @ 7761398): 4206 / 1220375 / 1466087 / 1412107 / 909115 ns/op
   Branch (geprojdouble-only):   5368 / 1276801 / 1487202 / 1445619 / 918919 ns/op
   Delta: +27.63% / +4.62% / +1.44% / +2.37% / +1.08% (same order).
+- Follow-up sanity check (Feb 1, 2026):
+  `go test ./... -bench=GEProjPoint_ConstantTime` =>
+  `BenchmarkGEProjPoint_ConstantTime_Short-8: 992828 ns/op (0 B/op, 0 allocs/op)`.
 
 ## Implementation Notes (Repo-Specific)
 
