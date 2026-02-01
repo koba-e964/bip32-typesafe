@@ -245,8 +245,42 @@ func GEJacobianDouble(p *JacobianPoint) *JacobianPoint {
 
 // GEProjDouble computes 2*arg. It runs in constant-time.
 func (p *ProjPoint) GEProjDouble(arg *ProjPoint) {
-	// 12 feMul + 2 feMul21 + 14 feAdd + 5 feSub
-	p.GEProjAdd(arg, arg)
+	// Specialization of GEProjAdd with a == b to use feSquare where possible.
+	t0 := feSquare(arg.x)
+	t1 := feSquare(arg.y)
+	t2 := feSquare(arg.z)
+	t3 := feAdd(arg.x, arg.y)
+	t3 = feSquare(t3)
+	t4 := feAdd(t0, t1)
+	t3 = feSub(t3, t4)
+	t4 = feAdd(arg.y, arg.z)
+	x3 := feAdd(arg.y, arg.z)
+	t4 = feSquare(t4)
+	x3 = feAdd(t1, t2)
+	t4 = feSub(t4, x3)
+	x3 = feAdd(arg.x, arg.z)
+	y3 := feAdd(arg.x, arg.z)
+	x3 = feSquare(x3)
+	y3 = feAdd(t0, t2)
+	y3 = feSub(x3, y3)
+	x3 = feAdd(t0, t0)
+	t0 = feAdd(x3, t0)
+	t2 = feMul21(t2)
+	z3 := feAdd(t1, t2)
+	t1 = feSub(t1, t2)
+	y3 = feMul21(y3)
+	x3 = feMul(t4, y3)
+	t2 = feMul(t3, t1)
+	x3 = feSub(t2, x3)
+	y3 = feMul(y3, t0)
+	t1 = feMul(t1, z3)
+	y3 = feAdd(t1, y3)
+	t0 = feMul(t0, t3)
+	z3 = feMul(z3, t4)
+	z3 = feAdd(z3, t0)
+	p.x = x3
+	p.y = y3
+	p.z = z3
 }
 
 // If a = b != O, this function returns (0, 0, 0), which is invalid.
